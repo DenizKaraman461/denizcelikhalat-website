@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <title>Ürünler | Deniz Çelik Halat</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        body {
+     background: url('/uploads/Background.png') no-repeat center center fixed;
+     background-size: cover;
+     min-height: 100vh;
+ }
+
+ /* Navbar siyah */
+ nav.navbar {
+     background-color: #000 !important;
+ }
+
+ .navbar-brand img {
+     height: 60px;
+     width: auto;
+     object-fit: contain;
+ }
+
+ .icon-glow {
+     color: #fff !important;
+     text-shadow: 0 0 8px #fff !important;
+     transition: color 0.3s ease;
+ }
+
+ .icon-glow.inactive {
+     color: #fff !important;
+     text-shadow: none !important;
+     margin-right: 20px;
+ }
+
+ /* Navbar linkleri sarı */
+ .navbar-dark .nav-link, .navbar-dark a {
+     color: #FFD700;
+     font-weight: 600;
+     transition: color 0.3s ease;
+     text-decoration: none;
+ }
+
+ .navbar-dark .nav-link:hover, .navbar-dark a:hover {
+     color: white;
+     text-decoration: none;
+ }
+
+ /* Kategori menüsü */
+ .category-menu {
+     display: flex;
+     flex-wrap: wrap;
+     gap: 12px;
+     margin-bottom: 20px;
+ }
+
+ .category-menu a {
+     flex: 1 1 120px;
+     text-align: center;
+     text-decoration: none;
+     color: #FFD700;
+     border: 1px solid #FFD700;
+     padding: 8px 12px;
+     border-radius: 6px;
+     transition: background-color 0.3s ease, color 0.3s ease;
+ }
+
+ .category-menu a:hover {
+     background-color: #FFD700;
+     color: black;
+ }
+
+ /* Arama alanı */
+ .search-container {
+     width: 100%;
+     display: flex;
+     gap: 8px;
+     margin-bottom: 30px;
+     align-items: center;
+ }
+
+ .search-container input[type="search"] {
+     flex-grow: 1;
+     padding: 10px 12px;
+     font-size: 1rem;
+     border-radius: 4px;
+     border: 1px solid #ced4da;
+     height: 42px; /* Sabit yükseklik */
+     box-sizing: border-box;
+ }
+
+ .search-container button {
+     width: 42px; /* Arama çubuğuyla aynı yükseklik için kare */
+     height: 42px;
+     background-color: #FFD700;
+     border: none;
+     color: black;
+     font-size: 1.3rem;
+     border-radius: 4px;
+     cursor: pointer;
+     display: flex;
+     justify-content: center;
+     align-items: center;
+     padding: 0;
+     transition: background-color 0.3s ease;
+ }
+
+ .search-container button:hover {
+     background-color: #e6c200;
+ }
+
+ .search-container button i {
+     font-size: 20px;
+     line-height: 1;
+ }
+
+ .category-card-container {
+  width: 250px; /* Daha makul genişlik */
+  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.category-card {
+  width: 100%;
+  height: 250px; /* Sadece resim yüksekliği */
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+}
+
+.category-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.category-card:hover img {
+  transform: scale(1.05);
+}
+
+.category-title {
+  margin-top: 10px;
+  font-weight: bold;
+  font-size: 1rem;
+  color: #fff;
+  text-align: center;
+  user-select: none;
+}
+
+ /* Filtre temizle butonu */
+ .clear-filter-btn {
+     cursor: pointer;
+     font-weight: bold;
+     font-size: 1.6rem;
+     color: #dc3545;
+     margin-left: 12px;
+     user-select: none;
+ }
+
+ /* Pagination */
+ .pagination > .page-item > .page-link {
+     color: #FFD700;
+     font-weight: 600;
+     background-color: transparent;
+     border: 1px solid #FFD700;
+     margin: 0 4px;
+ }
+
+ .pagination > .page-item.active > .page-link {
+     background-color: #FFD700;
+     color: black;
+     border-color: #FFD700;
+ }
+
+ .pagination > .page-item.disabled > .page-link {
+     color: #aaa;
+     pointer-events: none;
+     border-color: #ddd;
+ }
+        .admin-shield-icon {
+  color: #FFD700 !important;
+  text-shadow: 0 0 8px #FFD700 !important;
+}
+
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-black py-3">
+    <div class="container d-flex justify-content-between align-items-center">
+
+        <div class="d-flex align-items-center gap-3">
+            <a href="/" class="navbar-brand d-flex align-items-center">
+                <img src="/uploads/deniz-logo.png" alt="Deniz Çelik Halat Logo" />
+            </a>
+            <a href="/" class="text-white d-flex align-items-center" style="font-weight: 500; font-size: 1rem; text-decoration: none;">
+                <i class="bi bi-house-fill icon-glow"></i>
+            </a>
+
+            <a href="/products" class="btn btn-outline-light d-flex align-items-center gap-1" style="font-size: 1rem;">
+                <i class="bi bi-search icon-glow"></i>
+            </a>
+
+            <a href="/#markalarimiz-hakkimizda"
+               class="text-white d-flex align-items-center gap-2"
+               style="font-weight: 500; font-size: 1rem; text-decoration: none;">
+                <i class="bi bi-info-circle-fill icon-glow"></i> Hakkımızda
+            </a>
+
+        </div>
+
+        <div class="d-flex align-items-center gap-4">
+            <a href="https://maps.google.com" class="nav-link-icon d-flex align-items-center gap-1 text-white">
+                <i class="bi bi-geo-alt-fill icon-glow"></i> Bornova, İzmir
+            </a>
+            <a href="mailto:info@denizcelikhalat.com" class="nav-link-icon d-flex align-items-center gap-1 text-white">
+                <i class="bi bi-envelope-fill icon-glow"></i> info@denizcelikhalat.com
+            </a>
+            <a href="tel:+902324567890" class="nav-link-icon d-flex align-items-center gap-1 text-white">
+                <i class="bi bi-telephone-fill icon-glow"></i> +90 232 456 78 90
+            </a>
+
+            <!-- Admin Giriş Kalkan Ikonu -->
+            <a href="/login" class="nav-link-icon d-flex align-items-center gap-1" title="Admin Girişi" style="font-size: 1.5rem;">
+                <i class="bi bi-shield-lock admin-shield-icon"></i>
+            </a>
+
+        </div>
+
+    </div>
+</nav>
+
+<div class="container mt-4">
+
+    <!-- Kategori Başlığı ve Filtre Temizle -->
+    <div class="d-flex align-items-center mb-3">
+        <h5 class="m-0 text-warning">Kategoriler</h5>
+        <span class="clear-filter-btn" th:if="${category != null}"
+              th:onclick="'location.href=\'/products\''"
+              title="Filtreyi Temizle">×</span>
+    </div>
+
+    <!-- Kategori Menü -->
+    <div class="category-menu">
+        <a th:href="@{/category/1150}" class="btn btn-outline-primary">Çelik Halat</a>
+        <a th:href="@{/category/1151}" class="btn btn-outline-primary">Zincirler</a>
+        <a th:href="@{/category/1152}" class="btn btn-outline-primary">Bağlantı Elemanları</a>
+        <a th:href="@{/category/1153}" class="btn btn-outline-primary">Polyester Sapan</a>
+        <a th:href="@{/category/1154}" class="btn btn-outline-primary">Kaldırma Ekipmanları</a>
+        <a th:href="@{/category/1156}" class="btn btn-outline-primary">Çelik Halat Sapan</a>
+        <a th:href="@{/category/1155}" class="btn btn-outline-primary">Diğer</a>
+    </div>
+
+    <!-- Arama -->
+    <form method="get" action="#" class="search-container">
+        <input type="search" name="keyword" placeholder="Ürün ara..." th:value="${keyword}" />
+        <button id="searchBtn" type="submit">
+            <i class="bi bi-search"></i>
+        </button>
+    </form>
+
+    <!-- Yeni Ürün Ekle (Admin) -->
+    <a href="/add" class="btn btn-success mb-3" th:if="${isAdmin}">Yeni Ürün Ekle</a>
+
+    <!-- Ürünler grid -->
+    <div class="row g-4">
+        <div class="col-6 col-md-4 col-lg-3" th:each="product : ${productPage.content}">
+            <div class="category-card-container">
+                <a th:href="@{'/products/' + ${product.id}}" style="display: block; text-decoration: none;">
+                    <div class="category-card">
+                        <img th:src="@{${product.imagePath}}" alt="Ürün Görselü" />
+                    </div>
+                    <p class="category-title" th:text="${product.name}"></p>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <nav>
+        <ul class="pagination justify-content-center mt-4">
+            <!-- Önceki -->
+            <li th:classappend="${productPage.first} ? 'disabled'" class="page-item">
+                <a class="page-link"
+                   th:href="${category != null} ?
+                        @{/category/{id}(id=${category.id}, page=${currentPage - 1 < 0 ? 0 : currentPage - 1}, keyword=${keyword})} :
+                        @{/products(page=${currentPage - 1 < 0 ? 0 : currentPage - 1}, keyword=${keyword})}">
+                    Önceki
+                </a>
+            </li>
+
+            <!-- Sayfa Numaraları -->
+            <li th:each="i : ${pageNumbers}" th:classappend="${i == currentPage} ? 'active'" class="page-item">
+                <a class="page-link"
+                   th:href="${category != null} ?
+                        @{/category/{id}(id=${category.id}, page=${i}, keyword=${keyword})} :
+                        @{/products(page=${i}, keyword=${keyword})}"
+                   th:text="${i + 1}">1</a>
+            </li>
+
+            <!-- Sonraki -->
+            <li th:classappend="${productPage.last} ? 'disabled'" class="page-item">
+                <a class="page-link"
+                   th:href="${category != null} ?
+                        @{/category/{id}(id=${category.id}, page=${currentPage + 1 > totalPages - 1 ? totalPages - 1 : currentPage + 1}, keyword=${keyword})} :
+                        @{/products(page=${currentPage + 1 > totalPages - 1 ? totalPages - 1 : currentPage + 1}, keyword=${keyword})}">
+                    Sonraki
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <title>Anasayfa | Deniz Çelik Halat</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
+
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
+
+  <style>
+    /* Temel Reset ve Genel Ayarlar */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow-x: hidden;
+  font-family: Arial, sans-serif;
+  scroll-behavior: smooth;
+  color: #FFD700;
+  background: url("/uploads/Background.png") no-repeat center center fixed;
+  background-size: cover;
+}
+
+/* Navbar Logo */
+.navbar-brand img {
+  height: 80px;
+  width: auto;
+  transition: height 0.3s ease;
+}
+
+/* Navbar ikonları ve linkleri */
+.nav-link-icon {
+  color: #FFD700;
+  text-decoration: none;
+  margin-left: 20px;
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+  transition: font-size 0.3s ease;
+}
+.nav-link-icon i {
+  margin-right: 8px;
+  font-size: 1.2rem;
+}
+
+/* Hero Section */
+.hero-section {
+  height: 100vh;
+  background: url('/uploads/wallpaper.jpg') no-repeat center center;
+  background-size: cover;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: #fff;
+  backdrop-filter: blur(2px);
+  padding: 0 20px;
+}
+.hero-section h1 {
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(255, 235, 59, 0.5);
+  margin-bottom: 10px;
+}
+.hero-section p {
+  font-size: 20px;
+  color: #ffffffcc;
+  margin-top: 10px;
+}
+
+/* Sektör Kartları */
+.sector-card {
+  overflow: hidden;
+  border-radius: 8px;
+}
+.sector-card img {
+  width: 100%;
+  height: 450px;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+  cursor: pointer;
+  display: block;
+  transform-origin: bottom center;
+}
+.sector-card img:hover {
+  transform: scale(1.1);
+}
+.section-title {
+  color: #FFD700;
+  font-weight: bold;
+  margin-top: 40px;
+  margin-bottom: 20px;
+}
+.sector-desc{
+  font-size: .95rem;   /* küçük font */
+  color: #fff;         /* beyaz/yüksek kontrast */
+  text-align: center;
+  margin-top: 8px;
+  opacity: .9;
+}
+
+/* Kategoriler Bölümü */
+.categories-section {
+  width: 100vw;
+  min-height: 100vh;
+  background: url('/uploads/wallpaper-categories.jpg') no-repeat center center fixed;
+  background-size: cover;
+  padding: 50px 20px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  color: white !important;
+  position: relative;
+  overflow-x: hidden;
+}
+.categories-section h2.section-title {
+  color: white !important;
+  margin-bottom: 40px;
+}
+
+/* Kategori Kartları */
+.category-card {
+  height: 450px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+.img-wrapper {
+  height: 400px;
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
+}
+.img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+  cursor: pointer;
+}
+.img-wrapper img:hover {
+  transform: scale(1.1);
+}
+.category-card p {
+  margin: 10px 0 0 0;
+  padding: 0 10px;
+  color: #FFD700;
+  font-weight: bold;
+  font-size: 20px;
+  user-select: none;
+  flex-shrink: 0;
+  text-align: center;
+}
+.sector-desc{
+  font-size: .95rem;   /* küçük font */
+  color: #fff;         /* beyaz/yüksek kontrast */
+  text-align: center;
+  margin-top: 8px;
+  opacity: .9;
+}
+/* --- SEKTÖRLER: aralık + tipografi (güncel) --- */
+#sektorler .row {
+  --bs-gutter-y: 2.6rem;             /* kartlar arası dikey boşluk */
+}
+
+#sektorler .category-card {
+  height: auto;
+  overflow: visible;
+}
+
+#sektorler .img-wrapper {
+  height: 340px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+}
+
+/* Başlık: sarı */
+#sektorler .category-card > p:not(.sector-desc) {
+  margin: 4px 0 0 0;
+  color: #FFD700;
+  font-weight: 800;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+/* Açıklama: çok küçük ve beyaz */
+#sektorler .sector-desc {
+  margin: 6px auto 0;
+  max-width: 95%;
+  font-size: .78rem;
+  line-height: 1.45;
+  font-weight: 400;
+  color: rgba(255,255,255,.96);
+  text-align: center;
+  opacity: 1;
+}
+
+/* Mobil uyarlama */
+@media (max-width: 768px) {
+  #sektorler .img-wrapper { height: 240px; }
+  #sektorler .category-card > p:not(.sector-desc) { font-size: 1rem; }
+  #sektorler .sector-desc { font-size: .84rem; }
+}
+
+
+
+/* Markalar & Hakkımızda */
+#markalarimiz-hakkimizda .content {
+  display: flex;
+  max-width: 1300px;
+  width: 100%;
+  gap: 40px;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+/* Markalar gridini düzenle */
+#markalarimiz-hakkimizda .markalar-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 250px);
+  gap: 20px;
+  flex: 1;
+}
+
+#markalarimiz-hakkimizda .press-container {
+  flex: 1;
+  min-height: 520px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+#markalarimiz-hakkimizda .press-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.content {
+  display: flex;
+  max-width: 1300px;
+  width: 100%;
+  gap: 40px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.markalar-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 250px);
+  gap: 20px;
+  flex: 1;
+  border-radius: 12px 0 0 12px;
+  overflow: hidden;
+}
+.markalar-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+.press-container {
+  flex: 1;
+  min-height: 520px;
+  border-radius: 0 12px 12px 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.press-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+.footer-text {
+  max-width: 900px;
+  width: 100%;
+  margin: 40px auto 0 auto;
+  color: #eee;
+  font-size: 1.2rem;
+  line-height: 1.6;
+  text-align: center;
+  background: transparent;
+  padding: 0 10px;
+}
+
+/* Responsive Tasarım */
+@media (max-width: 768px) {
+  nav.navbar .container {
+    flex-wrap: wrap;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 30px;
+  }
+  nav.navbar .navbar-brand {
+    margin-bottom: 10px;
+  }
+  nav.navbar .navbar-brand img {
+    height: 100px !important;
+  }
+  nav.navbar .d-flex.align-items-center.gap-3,
+  nav.navbar .d-flex.align-items-center.gap-4 {
+    flex-direction: column !important;
+    gap: 15px !important;
+    width: 100%;
+    align-items: center;
+  }
+  nav.navbar .d-flex.align-items-center.gap-3 > a,
+  nav.navbar .d-flex.align-items-center.gap-4 > a {
+    font-size: 2rem !important;
+    padding: 10px 0 !important;
+  }
+  nav.navbar .d-flex.align-items-center.gap-3 > a i,
+  nav.navbar .d-flex.align-items-center.gap-4 > a i {
+    font-size: 3rem !important;
+  }
+}
+
+/* Sektör & Kategori kartlarının mobilde büyümesi */
+@media (max-width: 768px) {
+  .sector-card img {
+    height: 300px !important;
+  }
+  .category-card {
+    height: 350px !important;
+  }
+  .img-wrapper {
+    height: 300px !important;
+  }
+  .category-card p {
+    font-size: 1.3rem !important;
+  }
+}
+
+/* Markalar & Hakkımızda bölümü mobil düzeni */
+@media (max-width: 900px) {
+  #markalarimiz-hakkimizda .content {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  #markalarimiz-hakkimizda .markalar-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(2, 150px);
+  }
+
+  #markalarimiz-hakkimizda .press-container {
+    min-height: 250px;
+    width: 100%;
+  }
+
+  #markalarimiz-hakkimizda h2 {
+    font-size: 2rem !important;
+    margin-bottom: 20px !important;
+    text-align: center;
+  }
+
+  #markalarimiz-hakkimizda p {
+    font-size: 1rem;
+    padding: 0 10px;
+    text-align: center;
+  }
+}
+
+/* Küçük ekranlarda içerik sütunları dikey */
+@media (max-width: 900px) {
+  .content {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .markalar-grid, .press-container {
+    flex: unset;
+    width: 100%;
+    min-height: 250px;
+    border-radius: 12px !important;
+  }
+  .markalar-grid {
+    grid-template-rows: repeat(2, 200px) !important;
+  }
+}
+
+/* İkonların glow efekti */
+.icon-glow {
+  color: #fff !important;
+  text-shadow: 0 0 8px #fff !important;
+  transition: color 0.3s ease;
+}
+.icon-glow.inactive {
+  color: #fff !important;
+  text-shadow: none !important;
+  margin-right: 20px;
+}
+
+/* Navbar sağdaki menüyü sağa hizala */
+.navbar .container > div:last-child {
+  margin-left: auto;
+}
+
+/* Admin kalkan ikon stili */
+.admin-shield-icon {
+  color: #FFD700 !important;
+  text-shadow: 0 0 8px #FFD700 !important;
+}
+
+  </style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-dark bg-black py-3">
+  <div class="container d-flex justify-content-between align-items-center">
+
+    <div class="d-flex align-items-center gap-3">
+      <a href="/" class="navbar-brand d-flex align-items-center">
+        <img src="/uploads/deniz-logo.png" alt="Deniz Çelik Halat Logo" style="height: 100px; width: auto;" />
+      </a>
+      <a href="/" class="btn btn-outline-light d-flex align-items-center gap-1" style="font-size: 1rem;">
+        <i class="bi bi-house-fill icon-glow"></i>
+      </a>
+      <a href="/products" class="text-white d-flex align-items-center" style="font-size: 1.2rem;">
+        <i class="bi bi-search icon-glow"></i>
+      </a>
+      <a href="#markalarimiz-hakkimizda"
+         class="text-white d-flex align-items-center gap-2"
+         style="font-weight: 500; font-size: 1rem; text-decoration: none;">
+        <i class="bi bi-info-circle-fill icon-glow"></i> Hakkımızda
+      </a>
+    </div>
+
+    <div class="d-flex align-items-center gap-4">
+      <a href="https://maps.app.goo.gl/q5HHyXKietcfTcU89" target="_blank" class="nav-link-icon d-flex align-items-center gap-1 text-white" rel="noopener noreferrer">
+        <i class="bi bi-geo-alt-fill icon-glow"></i> Bornova, İzmir
+      </a>
+
+      <a href="mailto:info@denizcelikhalat.com" class="nav-link-icon d-flex align-items-center gap-1 text-white">
+        <i class="bi bi-envelope-fill icon-glow"></i> info@denizcelikhalat.com
+      </a>
+
+      <div class="d-flex flex-column" style="line-height: 1;">
+        <a href="tel:+902324430681" class="nav-link-icon d-flex align-items-center gap-1 text-white" style="padding-bottom: 0;">
+          <i class="bi bi-telephone-fill icon-glow" style="min-width: 24px;"></i> +90 232 456 78 90
+        </a>
+        <a href="tel:+902323758235" class="nav-link-icon d-flex align-items-center gap-1 text-white" style="padding-left: 36px; margin-top: 0;">
+          +90 232 375 82 35
+        </a>
+      </div>
+
+      <!-- Admin Giriş Kalkan Ikonu -->
+      <a href="/login" class="nav-link-icon d-flex align-items-center gap-1" title="Admin Girişi" style="font-size: 1.5rem;">
+        <i class="bi bi-shield-lock admin-shield-icon"></i>
+      </a>
+    </div>
+  </div>
+</nav>
+
+
+<!-- Hero Section -->
+<div class="hero-section position-relative text-center text-white" style="background: url('/uploads/wallpaper.jpg') no-repeat center center; background-size: cover; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 0 20px;">
+  <h1 style="color: #fff; font-weight: 700; font-size: 64px; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); margin-bottom: 10px;">Deniz Çelik Halat</h1>
+
+  <!-- ICON MENU -->
+  <div style="width: 100%; max-width: 900px; display: flex; justify-content: space-around; align-items: center; margin-top: 200px;">
+
+    <!-- Aşağı Ok (Sektörler) -->
+    <a href="#sektorler" id="btnSektorler" style="color: white; text-decoration: none; display: flex; flex-direction: column; align-items: center; font-weight: 600; cursor: pointer; margin-top: 20px;">
+      <i class="bi bi-arrow-down-circle-fill" style="font-size: 4.5rem;"></i>
+      <span style="margin-top: 8px; font-size: 1.2rem;">Sektörler</span>
+    </a>
+
+    <!-- Arama -->
+    <a href="/products" style="color: white; text-decoration: none; display: flex; flex-direction: column; align-items: center; font-weight: 600; margin-top: 20px;">
+      <i class="bi bi-search" style="font-size: 4.5rem;"></i>
+      <span style="margin-top: 8px; font-size: 1.2rem;">Ara</span>
+    </a>
+
+    <!-- Kategoriler -->
+    <a id="btnKategoriler" href="#kategoriler" style="color: white; text-decoration: none; display: flex; flex-direction: column; align-items: center; font-weight: 600; cursor: pointer; margin-top: 20px;">
+      <i class="bi bi-list-ul" style="font-size: 4.5rem;"></i>
+      <span style="margin-top: 8px; font-size: 1.2rem;">Kategoriler</span>
+    </a>
+
+  </div>
+</div>
+
+<div id="sektorler" class="container py-5">
+  <h2 class="text-center section-title mb-5">SEKTÖRLER</h2>
+  <div class="row row-cols-1 row-cols-md-3 g-4">
+
+    <!-- İnşaat -->
+    <div class="col">
+      <div class="category-card">
+        <a>
+          <div class="img-wrapper">
+            <img src="/uploads/insaat.jpg" alt="İnşaat">
+          </div>
+        </a>
+        <p>İNŞAAT</p>
+        <p class="sector-desc">İnşaat sektöründe Deniz Çelik Halat, kaliteli çelik halatlar ve kaldırma ekipmanları sunar. Güvenli ve dayanıklıdır.</p>
+      </div>
+    </div>
+
+    <!-- Vinç Sistemleri -->
+    <div class="col">
+      <div class="category-card">
+        <a>
+          <div class="img-wrapper">
+            <img src="/uploads/vinc.jpg" alt="Vinç Sistemleri">
+          </div>
+        </a>
+        <p>VİNÇ SİSTEMLERİ</p>
+        <p class="sector-desc">Vinç sistemlerinde yüksek taşıma kapasitesi ve güvenlik ön plandadır. Ürünlerimiz uzun ömürlüdür.</p>
+      </div>
+    </div>
+
+    <!-- Gemicilik -->
+    <div class="col">
+      <div class="category-card">
+        <a>
+          <div class="img-wrapper">
+            <img src="/uploads/gemicilik.jpg" alt="Gemicilik">
+          </div>
+        </a>
+        <p>GEMİCİLİK</p>
+        <p class="sector-desc">Deniz taşımacılığı için özel üretilmiş zincir ve halatlar ile gemicilik sektöründe çözüm ortağıyız.</p>
+      </div>
+    </div>
+
+    <!-- Sanayi -->
+    <div class="col">
+      <div class="category-card">
+        <a>
+          <div class="img-wrapper">
+            <img src="/uploads/sanayicilik.jpg" alt="Sanayi">
+          </div>
+        </a>
+        <p>SANAYİ</p>
+        <p class="sector-desc">Sanayiye özel çelik halatlar, zincirler ve kaldırma aksesuarları ile hizmet sunuyoruz.</p>
+      </div>
+    </div>
+
+    <!-- Madencilik -->
+    <div class="col">
+      <div class="category-card">
+        <a>
+          <div class="img-wrapper">
+            <img src="/uploads/madencilik.jpg" alt="Madencilik">
+          </div>
+        </a>
+        <p>MADENCİLİK</p>
+        <p class="sector-desc">Zorlu madencilik koşullarına dayanıklı çelik halat çözümleriyle güvenli operasyon sağlıyoruz.</p>
+      </div>
+    </div>
+
+    <!-- Kategoriler Bağlantısı -->
+    <div class="col">
+      <div class="category-card" style="cursor:pointer;">
+        <a href="#kategoriler" style="text-decoration:none;color:#FFD700;">
+          <div class="img-wrapper" style="display:flex;align-items:center;justify-content:center;">
+            <i class="bi bi-arrow-down-circle" style="font-size:6rem;"></i>
+          </div>
+        </a>
+        <p>KATEGORİLER</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+    <!-- Kategoriler kısmı (sayfanın başka bir yerinde) -->
+    <div id="kategoriler" class="categories-section fade-up">
+      <div class="container py-5" style="position: relative; z-index: 1; max-width: 1200px; padding-left: 15px; padding-right: 15px;">
+        <h2 class="section-title text-center mb-5">KATEGORİLER</h2>
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+
+          <!-- Çelik Halat -->
+          <div class="col fade-up">
+            <div class="category-card" style="height: 450px; border-radius:12px; overflow: visible; display: flex; flex-direction: column; cursor: pointer;">
+              <a href="/category/1150" style="display: block;">
+                <div class="img-wrapper" style="height: 400px; overflow: hidden; border-radius: 24px;">
+                  <img src="/uploads/celik_halat.jpg" alt="Çelik Halat" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; cursor: pointer;" />
+                </div>
+              </a>
+              <p style="margin: 10px 0 0 0; padding: 0 20px; color: white; font-weight: bold; font-size: 20px; user-select: none; text-align: center;">ÇELİK HALAT</p>
+            </div>
+          </div>
+
+          <!-- Zincirler -->
+          <div class="col fade-up">
+            <div class="category-card" style="height: 450px; border-radius:12px; overflow: visible; display: flex; flex-direction: column; cursor: pointer;">
+              <a href="/category/1151" style="display: block;">
+                <div class="img-wrapper" style="height: 400px; overflow: hidden; border-radius: 24px;">
+                  <img src="/uploads/zincir.webp" alt="Zincirler" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; cursor: pointer;" />
+                </div>
+              </a>
+              <p style="margin: 10px 0 0 0; padding: 0 20px; color: white; font-weight: bold; font-size: 20px; user-select: none; text-align: center;">ZİNCİRLER</p>
+            </div>
+          </div>
+
+          <!-- Bağlantı Elemanları -->
+          <div class="col fade-up">
+            <div class="category-card" style="height: 450px; border-radius:12px; overflow: visible; display: flex; flex-direction: column; cursor: pointer;">
+              <a href="/category/1152" style="display: block;">
+                <div class="img-wrapper" style="height: 400px; overflow: hidden; border-radius: 24px;">
+                  <img src="/uploads/kanca.jpg" alt="Bağlantı Elemanları" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; cursor: pointer;" />
+                </div>
+              </a>
+              <p style="margin: 10px 0 0 0; padding: 0 20px; color: white; font-weight: bold; font-size: 20px; user-select: none; text-align: center;">BAĞLANTI ELEMANLARI</p>
+            </div>
+          </div>
+
+          <!-- Polyester Sapan -->
+          <div class="col fade-up">
+            <div class="category-card" style="height: 450px; border-radius:12px; overflow: visible; display: flex; flex-direction: column; cursor: pointer;">
+              <a href="/category/1153" style="display: block;">
+                <div class="img-wrapper" style="height: 400px; overflow: hidden; border-radius: 24px;">
+                  <img src="/uploads/polyester.jpeg" alt="Polyester Sapan" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; cursor: pointer;" />
+                </div>
+              </a>
+              <p style="margin: 10px 0 0 0; padding: 0 20px; color: white; font-weight: bold; font-size: 20px; user-select: none; text-align: center;">POLYESTER SAPAN</p>
+            </div>
+          </div>
+
+          <!-- Kaldırma Ekipmanları -->
+          <div class="col fade-up">
+            <div class="category-card" style="height: 450px; border-radius:12px; overflow: visible; display: flex; flex-direction: column; cursor: pointer;">
+              <a href="/category/1154" style="display: block;">
+                <div class="img-wrapper" style="height: 400px; overflow: hidden; border-radius: 24px;">
+                  <img src="/uploads/tel-halat.webp" alt="Kaldırma Ekipmanları" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; cursor: pointer;" />
+                </div>
+              </a>
+              <p style="margin: 10px 0 0 0; padding: 0 20px; color: white; font-weight: bold; font-size: 20px; user-select: none; text-align: center;">KALDIRMA EKİPMANLARI</p>
+            </div>
+          </div>
+
+          <!-- Aşağı Ok ve Yazı -->
+          <div class="col fade-up">
+            <div class="category-card" style="height: 450px; border-radius:12px; overflow: visible; display: flex; flex-direction: column; cursor: pointer;">
+              <a href="/category/1156" style="display: block;">
+                <div class="img-wrapper" style="height: 400px; overflow: hidden; border-radius: 24px;">
+                  <img src="/uploads/halat-sapan.jpg" alt="Çelik Halat Sapan" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; cursor: pointer;" />
+                </div>
+              </a>
+              <p style="margin: 10px 0 0 0; padding: 0 20px; color: white; font-weight: bold; font-size: 20px; user-select: none; text-align: center;">ÇELİK HALAT SAPAN</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <section id="markalarimiz-hakkimizda" style="
+  width: 100vw;
+  height: 100vh;
+  background: url('/uploads/wallpaper-marka.jpg') no-repeat center center;
+  background-size: cover;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  box-sizing: border-box;
+  color: white;
+  font-family: Arial, sans-serif;
+">
+
+      <h2 style="color: #fff; font-weight: bold; font-size: 3rem; margin-bottom: 40px; text-align: center;">
+        Markalarımız & Hakkımızda
+      </h2>
+
+      <div style="
+    display: flex;
+    width: 100%;
+    max-width: 1300px;
+    gap: 40px;
+    justify-content: center;
+    align-items: center;
+  ">
+
+        <!-- Markalar Grid -->
+        <div style="
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 250px);
+      gap: 20px;
+      flex: 1;
+    ">
+          <img src="/uploads/marka-1.png" alt="Marka 1" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+          <img src="/uploads/marka-2.jpg" alt="Marka 2" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+          <img src="/uploads/marka-3.jpg" alt="Marka 3" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+          <img src="/uploads/sertifika.jpg" alt="Marka 4" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        </div>
+
+        <!-- Büyük Press Makinası -->
+        <div style="flex: 1; height: 520px; border-radius: 8px; overflow: hidden;">
+          <img src="/uploads/press.jpg" alt="Press Makinası" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        </div>
+
+      </div>
+
+      <!-- Hakkımızda Paragraf -->
+      <p style="
+    max-width: 1200px;
+    margin: 40px auto 0 auto;
+    font-size: 1.2rem;
+    line-height: 1.6;
+    text-align: center;
+    color: #eee;
+    max-width: 90vw;
+  ">
+        Sektördeki iş tecrübesi ile “Kadir Karaman Deniz Çelik Halat” ticari unvanı ile kurulmuş olup, kurulduğu günden itibaren Çelik Halat Bağlantı Elemanları, Kaldırma Ekipmanları ve İş Güvenliği malzemeleri ile sektöründe piyasanın önde gelen firmaları arasına girmeyi hedeflemiştir.
+
+        Sahip olduğu Yenilikçi, Güvenilir, Dürüst, İlkeli, Müşteri Odaklı, Takım Ruhu ve Rekabetçi Değerlerini koruyarak Türkiye genelinde bilinen bir marka olma yolunda hedefine emin adımlarla ilerlemektedir.
+
+        Hizmet Verdiğimiz Sektörler; Vinç, Demir Çelik, Denizcilik, Asansör, Balıkçılık, Otomotiv, Madencilik, Mimari, Telesiyej, İnşaat, Gıda ve İş Güvenliğine ihtiyaç duyulan her işletmeye hizmet vermeye hazırdır.  </p>
+
+    </section>
+
+    <!-- AOS Kütüphanesi -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+    <!-- Sayfa İçin Özel Scriptler -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        // Smooth scroll fonksiyonu
+        function smoothScrollTo(id, offset = 0) {
+          const target = document.getElementById(id);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (offset !== 0) {
+              setTimeout(() => {
+                window.scrollBy(0, offset);
+              }, 300);
+            }
+          }
+        }
+
+        // Buton Eventleri
+        const btnSektorler = document.getElementById('btnSektorler');
+        const btnKategoriler = document.getElementById('btnKategoriler');
+        const btnMarkalar = document.getElementById('btnMarkalar');
+
+        if (btnSektorler) {
+          btnSektorler.addEventListener('click', e => {
+            e.preventDefault();
+            smoothScrollTo('sektorler', -100);
+          });
+        }
+
+        if (btnKategoriler) {
+          btnKategoriler.addEventListener('click', e => {
+            e.preventDefault();
+            smoothScrollTo('kategoriler', -100);
+          });
+        }
+
+        if (btnMarkalar) {
+          btnMarkalar.addEventListener('click', e => {
+            e.preventDefault();
+            smoothScrollTo('markalarimiz-hakkimizda', -100);
+          });
+        }
+
+       document.addEventListener('DOMContentLoaded', () => {
+    // AOS başlatma
+    AOS.init({
+        duration: 10, // animasyon süresi
+        once: true,     // sadece bir kez oynat
+        offset: 200     // animasyonun ne kadar aşağıda başladığını kontrol et
+    });
+});
+      document.getElementById("btnSektorler").addEventListener("click", function(e){
+    e.preventDefault();
+    document.getElementById("sektorler").scrollIntoView({behavior: "smooth"});
+});
+
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Bootstrap JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
