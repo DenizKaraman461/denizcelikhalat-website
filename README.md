@@ -34,10 +34,10 @@ A professional, dynamic web-based catalog system developed for an industrial ste
 
 ## 🚀 Getting Started
 
-### Prerequisites
-- JDK 17 or higher
-- MySQL Server
-- Maven
+## 📋 System Requirements
+- **Java:** JDK 17
+- **Database:** MySQL 8.0+
+- **Build Tool:** Maven 3.8+
 
 ### Installation
 
@@ -69,3 +69,10 @@ The administrative routes (/add, /edit/**, /delete/**) are protected. Use the sh
 
 📄 License
 This project is developed for Kadir Karaman Deniz Çelik Halat. All rights reserved.
+
+## 👤 Author
+
+**Deniz Karaman**
+- GitHub: [@DenizKaraman461](https://github.com/DenizKaraman461)
+- LinkedIn: [Deniz Karaman](https://www.linkedin.com/in/deniz-karaman-4450a2352/)
+- University: Izmir University of Economics - Computer Engineering
