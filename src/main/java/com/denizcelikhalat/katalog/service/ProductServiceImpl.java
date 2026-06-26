@@ -1,5 +1,6 @@
 package com.denizcelikhalat.katalog.service;
 
+import com.denizcelikhalat.katalog.model.MeasurementMode;
 import com.denizcelikhalat.katalog.model.Product;
 import com.denizcelikhalat.katalog.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,12 +76,18 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Product getById(Long id) {
+        // Admin düzenleme/görüntüleme için pasif ürünler dahil tümünü getirir.
         return productRepository.findById(id).orElse(null);
     }
 
     @Override
     @Transactional
     public void save(Product product, MultipartFile imageFile, MultipartFile tableImageFile) throws IOException {
+        // Güvenli varsayılanlar (basit boolean stok)
+        if (product.getActive() == null) product.setActive(Boolean.TRUE);
+        if (product.getInStock() == null) product.setInStock(Boolean.TRUE);
+        if (product.getCurrency() == null) product.setCurrency(com.denizcelikhalat.katalog.model.PriceCurrency.USD);
+
         if (imageFile != null && !imageFile.isEmpty()) {
             String imagePath = saveFile(imageFile);
             product.setImagePath("/uploads/" + imagePath);
@@ -111,6 +118,25 @@ public class ProductServiceImpl implements ProductService {
             existing.setCategory(updatedProduct.getCategory());
         }
 
+        // Ölçü / fiyatlandırma alanlarını da güncelle (DEĞİŞMEDİ)
+        existing.setMeasurementMode(updatedProduct.getMeasurementMode() != null
+                ? updatedProduct.getMeasurementMode() : MeasurementMode.NONE);
+        existing.setMeasurementUnitLabel(updatedProduct.getMeasurementUnitLabel());
+        existing.setMeasurementOptionsText(updatedProduct.getMeasurementOptionsText());
+
+        // Yayın & basit stok (sayısal stok artık kullanılmıyor; stockQuantity'ye dokunulmaz)
+        existing.setActive(updatedProduct.getActive() != null
+                ? updatedProduct.getActive() : Boolean.TRUE);
+        existing.setInStock(updatedProduct.getInStock() != null
+                ? updatedProduct.getInStock() : Boolean.TRUE);
+
+        // Para birimi (dönüşüm yok). Gelmezse mevcut korunur, o da yoksa USD.
+        if (updatedProduct.getCurrency() != null) {
+            existing.setCurrency(updatedProduct.getCurrency());
+        } else if (existing.getCurrency() == null) {
+            existing.setCurrency(com.denizcelikhalat.katalog.model.PriceCurrency.USD);
+        }
+
         if (imageFile != null && !imageFile.isEmpty()) {
             String imagePath = saveFile(imageFile);
             existing.setImagePath("/uploads/" + imagePath);
@@ -129,20 +155,21 @@ public class ProductServiceImpl implements ProductService {
         productRepository.deleteById(id);
     }
 
+    // ===== Herkese açık listelemeler: yalnızca YAYINDA olan ürünler =====
     @Override
     public Page<Product> findAll(Pageable pageable) {
-        return productRepository.findAll(pageable);
+        return productRepository.findByActiveTrue(pageable);
     }
 
     @Override
     public Page<Product> search(String keyword, Pageable pageable) {
-        if (!StringUtils.hasText(keyword)) return productRepository.findAll(pageable);
-        return productRepository.findByNameContainingIgnoreCase(keyword, pageable);
+        if (!StringUtils.hasText(keyword)) return productRepository.findByActiveTrue(pageable);
+        return productRepository.findByNameContainingIgnoreCaseAndActiveTrue(keyword, pageable);
     }
 
     @Override
     public Page<Product> findByCategoryId(Long categoryId, Pageable pageable) {
-        return productRepository.findByCategoryId(categoryId, pageable);
+        return productRepository.findByCategoryIdAndActiveTrue(categoryId, pageable);
     }
 
     @Override

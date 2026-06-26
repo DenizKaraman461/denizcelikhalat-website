@@ -1,6 +1,7 @@
 package com.denizcelikhalat.katalog.controller;
 
 import com.denizcelikhalat.katalog.model.Category;
+import com.denizcelikhalat.katalog.model.PriceCurrency;
 import com.denizcelikhalat.katalog.model.Product;
 import com.denizcelikhalat.katalog.service.CategoryService;
 import com.denizcelikhalat.katalog.service.ProductService;
@@ -14,6 +15,7 @@ import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -111,6 +113,7 @@ public class ProductController {
     public String showAddForm(Model model) {
         model.addAttribute("product", new Product());
         model.addAttribute("categories", categoryService.findAll());
+        model.addAttribute("currencies", PriceCurrency.values());
         return "add_product";
     }
 
@@ -129,6 +132,7 @@ public class ProductController {
         Product product = productService.getById(id);
         model.addAttribute("product", product);
         model.addAttribute("categories", categoryService.findAll());
+        model.addAttribute("currencies", PriceCurrency.values());
         return "edit_product";
     }
 
@@ -137,13 +141,17 @@ public class ProductController {
             @PathVariable Long id,
             @ModelAttribute Product product,
             @RequestParam(value = "imageFile", required = false) MultipartFile imageFile,
-            @RequestParam(value = "tableImageFile", required = false) MultipartFile tableImageFile
+            @RequestParam(value = "tableImageFile", required = false) MultipartFile tableImageFile,
+            RedirectAttributes redirectAttributes
     ) throws IOException {
         productService.update(id, product, imageFile, tableImageFile);
-        return "redirect:/products";
+        redirectAttributes.addFlashAttribute("success", "Ürün başarıyla güncellendi.");
+        // Düzenleme sonrası ürünün güncel detay sayfasına dön.
+        return "redirect:/products/" + id;
     }
 
-    @GetMapping("/delete/{id}")
+    // GÜVENLİK: Veri silme artık GET ile değil, CSRF korumalı POST ile yapılır.
+    @PostMapping("/delete/{id}")
     public String deleteProduct(@PathVariable Long id) {
         productService.deleteById(id);
         return "redirect:/products";
@@ -155,8 +163,13 @@ public class ProductController {
         if (product == null) {
             return "redirect:/products";
         }
+        boolean admin = isAdmin(authentication);
+        // Pasif (yayında olmayan) ürünü yalnızca admin görebilir; diğerleri listeye döner.
+        if (Boolean.FALSE.equals(product.getActive()) && !admin) {
+            return "redirect:/products";
+        }
         model.addAttribute("product", product);
-        model.addAttribute("isAdmin", isAdmin(authentication));
+        model.addAttribute("isAdmin", admin);
         return "product_detail";
     }
 

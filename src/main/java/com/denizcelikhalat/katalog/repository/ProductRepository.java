@@ -28,4 +28,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> searchNameOrDesc(@Param("kw") String keyword, Pageable pageable);
 
     boolean existsByNameIgnoreCaseAndCategory_Id(String name, Long categoryId);
+
+    // ===== Herkese açık (yalnızca yayında olan) listeleme =====
+    Page<Product> findByActiveTrue(Pageable pageable);
+
+    Page<Product> findByNameContainingIgnoreCaseAndActiveTrue(String name, Pageable pageable);
+
+    @EntityGraph(attributePaths = "category")
+    Page<Product> findByCategoryIdAndActiveTrue(Long categoryId, Pageable pageable);
 }
