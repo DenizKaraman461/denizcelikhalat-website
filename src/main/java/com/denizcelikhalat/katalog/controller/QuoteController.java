@@ -9,6 +9,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDateTime;
@@ -36,51 +37,27 @@ public class QuoteController {
     @PostMapping("/quote/create")
     public String createQuote(@ModelAttribute QuoteRequest quoteRequest,
                               RedirectAttributes redirectAttributes) {
-
+        // Ürün adı snapshot'ı (varsa) ve dönüş hedefi için ürünü bul.
         Long productId = quoteRequest.getProductId();
-
-        if (productId == null) {
-            redirectAttributes.addFlashAttribute("error", "Ürün bilgisi bulunamadı.");
-            return "redirect:/products";
+        Product product = (productId != null) ? productService.getById(productId) : null;
+        if (product != null) {
+            quoteRequest.setProductName(product.getName());
         }
-
-        Product product = productService.getById(productId);
-
-        if (product == null) {
-            redirectAttributes.addFlashAttribute("error", "Ürün bulunamadı.");
-            return "redirect:/products";
-        }
-
-        boolean isCustom = product.getMeasurementMode() != null
-                && "CUSTOM".equals(product.getMeasurementMode().name());
-
-        if (!isCustom) {
-            redirectAttributes.addFlashAttribute("error", "Bu ürün için teklif talebi oluşturulamaz.");
-            return "redirect:/products/" + productId;
-        }
-
-        if (quoteRequest.getCustomerName() == null || quoteRequest.getCustomerName().isBlank()
-                || quoteRequest.getPhone() == null || quoteRequest.getPhone().isBlank()) {
-            redirectAttributes.addFlashAttribute("error", "Ad soyad ve telefon alanları zorunludur.");
-            return "redirect:/products/" + productId;
-        }
-
-        quoteRequest.setProductName(product.getName());
 
         if (quoteRequest.getCertificateRequested() == null) {
             quoteRequest.setCertificateRequested(Boolean.FALSE);
         }
-
+        if (quoteRequest.getStatus() == null || quoteRequest.getStatus().isBlank()) {
+            quoteRequest.setStatus("NEW");
+        }
         quoteRequest.setCreatedAt(LocalDateTime.now());
 
         quoteRequestRepository.save(quoteRequest);
 
-        redirectAttributes.addFlashAttribute(
-                "success",
-                "Teklif talebiniz alındı. En kısa sürede sizinle iletişime geçeceğiz."
-        );
+        redirectAttributes.addFlashAttribute("success", "Teklif talebiniz alındı. En kısa sürede sizinle iletişime geçeceğiz.");
 
-        return "redirect:/products/" + productId;
+        // Aynı ürün detay sayfasına geri dön; productId yoksa ürün listesine.
+        return (productId != null) ? ("redirect:/products/" + productId) : "redirect:/products";
     }
 
     /**
@@ -90,5 +67,24 @@ public class QuoteController {
     public String adminQuotes(Model model) {
         model.addAttribute("quotes", quoteRequestRepository.findAllByOrderByCreatedAtDesc());
         return "admin_quotes";
+    }
+
+    /**
+     * Admin: bir teklif talebinin durumunu günceller. /admin/** altında olduğu için yalnızca ADMIN.
+     * CSRF açık (form token gönderir). Sonra tekrar /admin/quotes'a döner.
+     */
+    @PostMapping("/admin/quotes/status")
+    public String updateQuoteStatus(@RequestParam("quoteId") Long quoteId,
+                                    @RequestParam("status") String status,
+                                    RedirectAttributes redirectAttributes) {
+        QuoteRequest quote = quoteRequestRepository.findById(quoteId).orElse(null);
+        if (quote == null) {
+            redirectAttributes.addFlashAttribute("error", "Teklif talebi bulunamadı.");
+            return "redirect:/admin/quotes";
+        }
+        quote.setStatus((status != null && !status.isBlank()) ? status : "NEW");
+        quoteRequestRepository.save(quote);
+        redirectAttributes.addFlashAttribute("success", "Teklif durumu güncellendi.");
+        return "redirect:/admin/quotes";
     }
 }

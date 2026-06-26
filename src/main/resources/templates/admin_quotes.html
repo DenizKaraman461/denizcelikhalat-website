@@ -52,6 +52,22 @@
         .actions{display:flex; gap:12px; flex-wrap:wrap; margin-top:6px}
         .btn-ghost{display:inline-flex; align-items:center; gap:8px; padding:.66rem 1.3rem; border:1.5px solid var(--line); border-radius:11px; color:#ddd; text-decoration:none; font-weight:600}
         .btn-ghost:hover{border-color:#fff; color:#fff; background:rgba(255,255,255,.05)}
+        /* ===== Durum (status) ===== */
+        .alert-success{border:1px solid rgba(124,252,155,.45); background:rgba(124,252,155,.1); color:#aef0bf; border-radius:11px; padding:.8rem 1rem; margin-bottom:18px; font-size:.92rem}
+        .alert-error{border:1px solid rgba(255,82,82,.5); background:rgba(255,82,82,.12); color:#ffb3b3; border-radius:11px; padding:.8rem 1rem; margin-bottom:18px; font-size:.92rem}
+        .qmeta{display:flex; flex-direction:column; align-items:flex-end; gap:8px}
+        .status-pill{font-family:var(--f-mono); font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; padding:5px 12px; border-radius:999px; border:1px solid var(--line); white-space:nowrap}
+        .st-NEW{color:#ffe27a; border-color:rgba(255,215,0,.45); background:rgba(255,215,0,.08)}
+        .st-CONTACTED{color:#86c5ff; border-color:rgba(110,170,255,.45); background:rgba(110,170,255,.1)}
+        .st-OFFER_SENT{color:#c5a3ff; border-color:rgba(170,130,255,.45); background:rgba(170,130,255,.1)}
+        .st-CLOSED{color:var(--ok); border-color:rgba(124,252,155,.45); background:rgba(124,252,155,.08)}
+        .st-CANCELLED{color:#ff8b8b; border-color:rgba(255,82,82,.45); background:rgba(255,82,82,.1)}
+        .status-form{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; padding-top:12px; border-top:1px dashed var(--line)}
+        .status-form .st-cap{font-family:var(--f-mono); font-size:.7rem; letter-spacing:.18em; text-transform:uppercase; color:var(--gold-2)}
+        .status-form .form-select{background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); color:#fff; border-radius:10px; padding:.55rem .85rem; min-width:190px}
+        .status-form .form-select:focus{outline:none; border-color:var(--gold); box-shadow:0 0 0 .15rem rgba(255,215,0,.16)}
+        .status-form .form-select option{background:#0c0c0e; color:#fff}
+        .status-form .btn-upd{display:inline-flex; align-items:center; gap:7px; padding:.55rem 1.1rem; border:none; border-radius:10px; cursor:pointer; color:#100d00; font-weight:700; background:linear-gradient(180deg,#FFE970,#FFD700 55%,#E9C200)}
         @media (prefers-reduced-motion:reduce){*{transition:none!important}}
     </style>
 </head>
@@ -83,6 +99,9 @@
         <h1 class="page-title">Teklif Talepleri</h1>
     </div>
 
+    <div class="alert-success" th:if="${success}" th:text="${success}">Tamam</div>
+    <div class="alert-error" th:if="${error}" th:text="${error}">Hata</div>
+
     <!-- Boş durum -->
     <div class="empty" th:if="${quotes == null or quotes.isEmpty()}">
         <i class="bi bi-inbox"></i>
@@ -96,7 +115,18 @@
                 <span th:text="${q.productName} ?: 'Ürün'">Ürün Adı</span>
                 <small th:if="${q.productId != null}" th:text="|Ürün ID: ${q.productId}|">Ürün ID: 0</small>
             </div>
-            <div class="qdate" th:text="${q.createdAt != null} ? ${#temporals.format(q.createdAt,'dd.MM.yyyy HH:mm')} : '—'">—</div>
+            <div class="qmeta">
+                <div class="qdate" th:text="${q.createdAt != null} ? ${#temporals.format(q.createdAt,'dd.MM.yyyy HH:mm')} : '—'">—</div>
+                <span class="status-pill" th:classappend="${'st-' + (q.status != null ? q.status : 'NEW')}"
+                      th:switch="${q.status != null ? q.status : 'NEW'}">
+                    <span th:case="'NEW'">Yeni Talep</span>
+                    <span th:case="'CONTACTED'">Müşteri Arandı</span>
+                    <span th:case="'OFFER_SENT'">Teklif Gönderildi</span>
+                    <span th:case="'CLOSED'">Tamamlandı</span>
+                    <span th:case="'CANCELLED'">İptal</span>
+                    <span th:case="*" th:text="${q.status}">—</span>
+                </span>
+            </div>
         </div>
 
         <div class="qgrid">
@@ -127,6 +157,20 @@
             <div class="k">Not</div>
             <div class="v" th:text="${q.note}">—</div>
         </div>
+
+        <!-- Durum güncelleme (CSRF korumalı POST; /admin/** -> sadece ADMIN) -->
+        <form class="status-form" th:action="@{/admin/quotes/status}" method="post">
+            <input type="hidden" name="quoteId" th:value="${q.id}" />
+            <span class="st-cap">Durum</span>
+            <select class="form-select" name="status" th:with="cur=${q.status != null ? q.status : 'NEW'}">
+                <option value="NEW"        th:selected="${cur == 'NEW'}">Yeni Talep</option>
+                <option value="CONTACTED"  th:selected="${cur == 'CONTACTED'}">Müşteri Arandı</option>
+                <option value="OFFER_SENT" th:selected="${cur == 'OFFER_SENT'}">Teklif Gönderildi</option>
+                <option value="CLOSED"     th:selected="${cur == 'CLOSED'}">Tamamlandı</option>
+                <option value="CANCELLED"  th:selected="${cur == 'CANCELLED'}">İptal</option>
+            </select>
+            <button type="submit" class="btn-upd"><i class="bi bi-check-lg"></i> Güncelle</button>
+        </form>
     </div>
 
     <div class="actions">

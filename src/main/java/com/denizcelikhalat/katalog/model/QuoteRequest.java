@@ -70,6 +70,10 @@ public class QuoteRequest {
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;
 
+    // Talep durumu: NEW, CONTACTED, OFFER_SENT, CLOSED, CANCELLED. Varsayılan NEW.
+    @Column(name = "status", length = 50)
+    private String status = "NEW";
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -227,6 +231,14 @@ public class QuoteRequest {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public LocalDateTime getCreatedAt() {
