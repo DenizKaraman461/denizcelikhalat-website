@@ -35,6 +35,9 @@ public class OrderService {
     @Value("${app.order.notify-email:info@denizcelikhalat.com}")
     private String shopNotifyEmail;
 
+    @Value("${app.company.email:info@denizcelikhalat.com}")
+    private String companyEmail;
+
     public OrderService(OrderRepository orderRepository,
                         CartRepository cartRepository,
                         EmailService emailService) {
@@ -266,5 +269,49 @@ public class OrderService {
                 .orElseThrow(() -> new IllegalArgumentException("Sipariş bulunamadı: " + orderId));
         order.setStatus(status);
         orderRepository.save(order);
+
+        // Durum güncelleme bilgilendirmesi (async + fail-safe; güncellemeyi bozmaz)
+        sendStatusUpdateEmails(order);
+    }
+
+    private void sendStatusUpdateEmails(Order order) {
+        String code = "#DCH-" + order.getId();
+        String label = turkishOrderStatus(order.getStatus());
+        String customerEmail = (order.getCustomerEmail() != null && !order.getCustomerEmail().isBlank())
+                ? order.getCustomerEmail()
+                : ((order.getUser() != null) ? order.getUser().getEmail() : null);
+        String fullName = (order.getCustomerName() != null && !order.getCustomerName().isBlank())
+                ? order.getCustomerName() : "Müşterimiz";
+
+        // Müşteriye
+        if (customerEmail != null && !customerEmail.isBlank()) {
+            String subject = "Sipariş Durumu Güncellendi - " + code + " | Deniz Çelik Halat";
+            String body = "Sayın " + fullName + ",\n\n"
+                    + "Siparişinizin durumu güncellendi.\n\n"
+                    + "Sipariş Kodu : " + code + "\n"
+                    + "Yeni Durum   : " + label + "\n\n"
+                    + "Deniz Çelik Halat\nBornova, İzmir";
+            emailService.sendPlainText(customerEmail, subject, body);
+        }
+
+        // Şirkete
+        String adminSubject = "Sipariş Durumu Güncellendi - " + code;
+        String adminBody = "Bir siparişin durumu güncellendi.\n\n"
+                + "Sipariş Kodu : " + code + "\n"
+                + "Müşteri      : " + fullName + " (" + (customerEmail != null ? customerEmail : "-") + ")\n"
+                + "Yeni Durum   : " + label + "\n";
+        emailService.sendPlainText(companyEmail, adminSubject, adminBody);
+    }
+
+    private static String turkishOrderStatus(OrderStatus status) {
+        if (status == null) return "-";
+        switch (status) {
+            case PENDING:   return "Bekliyor";
+            case PREPARING: return "Hazırlanıyor";
+            case SHIPPED:   return "Kargoya Verildi";
+            case DELIVERED: return "Teslim Edildi";
+            case CANCELLED: return "İptal Edildi";
+            default:        return status.name();
+        }
     }
 }

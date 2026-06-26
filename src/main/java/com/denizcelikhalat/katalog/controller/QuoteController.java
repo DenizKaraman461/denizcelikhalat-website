@@ -3,7 +3,9 @@ package com.denizcelikhalat.katalog.controller;
 import com.denizcelikhalat.katalog.model.Product;
 import com.denizcelikhalat.katalog.model.QuoteRequest;
 import com.denizcelikhalat.katalog.repository.QuoteRequestRepository;
+import com.denizcelikhalat.katalog.service.EmailService;
 import com.denizcelikhalat.katalog.service.ProductService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,11 +25,17 @@ public class QuoteController {
 
     private final QuoteRequestRepository quoteRequestRepository;
     private final ProductService productService;
+    private final EmailService emailService;
+
+    @Value("${app.company.email:info@denizcelikhalat.com}")
+    private String companyEmail;
 
     public QuoteController(QuoteRequestRepository quoteRequestRepository,
-                           ProductService productService) {
+                           ProductService productService,
+                           EmailService emailService) {
         this.quoteRequestRepository = quoteRequestRepository;
         this.productService = productService;
+        this.emailService = emailService;
     }
 
     /**
@@ -53,6 +61,9 @@ public class QuoteController {
         quoteRequest.setCreatedAt(LocalDateTime.now());
 
         quoteRequestRepository.save(quoteRequest);
+
+        // Bilgilendirme e-postaları (async + fail-safe; hata kaydı bozmaz)
+        sendQuoteCreatedEmails(quoteRequest);
 
         redirectAttributes.addFlashAttribute("success", "Teklif talebiniz alındı. En kısa sürede sizinle iletişime geçeceğiz.");
 
@@ -84,7 +95,112 @@ public class QuoteController {
         }
         quote.setStatus((status != null && !status.isBlank()) ? status : "NEW");
         quoteRequestRepository.save(quote);
+
+        // Durum güncelleme bilgilendirmesi (async + fail-safe)
+        sendQuoteStatusEmails(quote);
+
         redirectAttributes.addFlashAttribute("success", "Teklif durumu güncellendi.");
         return "redirect:/admin/quotes";
+    }
+
+    // ===================== E-posta yardımcıları =====================
+
+    private void sendQuoteCreatedEmails(QuoteRequest q) {
+        String code = "#TKL-" + q.getId();
+        String product = (q.getProductName() != null && !q.getProductName().isBlank())
+                ? q.getProductName() : ("Ürün ID: " + q.getProductId());
+        String details = buildQuoteDetails(q);
+
+        // Müşteriye (email alanı varsa)
+        if (q.getEmail() != null && !q.getEmail().isBlank()) {
+            String subject = "Teklif Talebiniz Alındı - " + code + " | Deniz Çelik Halat";
+            String body = "Sayın " + safe(q.getCustomerName(), "Müşterimiz") + ",\n\n"
+                    + "Teklif talebiniz tarafımıza ulaştı. En kısa sürede sizinle iletişime geçeceğiz.\n\n"
+                    + "Talep No : " + code + "\n"
+                    + "Ürün     : " + product + "\n\n"
+                    + details
+                    + "\nDeniz Çelik Halat\nBornova, İzmir";
+            emailService.sendPlainText(q.getEmail(), subject, body);
+        }
+
+        // Şirkete
+        String adminSubject = "Yeni Teklif Talebi - " + code;
+        String adminBody = "Yeni bir teklif talebi alındı.\n\n"
+                + "Talep No : " + code + "\n"
+                + "Ürün     : " + product + "\n\n"
+                + "Müşteri:\n"
+                + "  Ad Soyad : " + safe(q.getCustomerName(), "-") + "\n"
+                + "  Telefon  : " + safe(q.getPhone(), "-") + "\n"
+                + "  E-posta  : " + safe(q.getEmail(), "-") + "\n"
+                + "  Firma    : " + safe(q.getCompanyName(), "-") + "\n\n"
+                + details;
+        emailService.sendPlainText(companyEmail, adminSubject, adminBody);
+    }
+
+    private void sendQuoteStatusEmails(QuoteRequest q) {
+        String code = "#TKL-" + q.getId();
+        String label = quoteStatusLabel(q.getStatus());
+        String product = (q.getProductName() != null && !q.getProductName().isBlank())
+                ? q.getProductName() : ("Ürün ID: " + q.getProductId());
+
+        if (q.getEmail() != null && !q.getEmail().isBlank()) {
+            String subject = "Teklif Talebiniz Güncellendi - " + code + " | Deniz Çelik Halat";
+            String body = "Sayın " + safe(q.getCustomerName(), "Müşterimiz") + ",\n\n"
+                    + "Teklif talebinizin durumu güncellendi.\n\n"
+                    + "Talep No : " + code + "\n"
+                    + "Ürün     : " + product + "\n"
+                    + "Yeni Durum : " + label + "\n\n"
+                    + "Deniz Çelik Halat\nBornova, İzmir";
+            emailService.sendPlainText(q.getEmail(), subject, body);
+        }
+
+        String adminSubject = "Teklif Durumu Güncellendi - " + code;
+        String adminBody = "Bir teklif talebinin durumu güncellendi.\n\n"
+                + "Talep No   : " + code + "\n"
+                + "Ürün       : " + product + "\n"
+                + "Müşteri    : " + safe(q.getCustomerName(), "-") + " (" + safe(q.getEmail(), "-") + ")\n"
+                + "Yeni Durum : " + label + "\n";
+        emailService.sendPlainText(companyEmail, adminSubject, adminBody);
+    }
+
+    private String buildQuoteDetails(QuoteRequest q) {
+        StringBuilder sb = new StringBuilder("Talep Detayları:\n");
+        appendIf(sb, "Sapan Tipi", q.getSlingType());
+        appendIf(sb, "Kol Sayısı", q.getLegCount() != null ? String.valueOf(q.getLegCount()) : null);
+        appendIf(sb, "Halat Çapı", q.getRopeDiameter());
+        appendIf(sb, "Halat Tipi", q.getRopeType());
+        appendIf(sb, "Uzunluk", q.getLength());
+        appendIf(sb, "Taşıma Kapasitesi", q.getCapacity());
+        appendIf(sb, "Çalışma Açısı", q.getWorkingAngle());
+        appendIf(sb, "Üst Bağlantı", q.getTopConnection());
+        appendIf(sb, "Alt Bağlantı", q.getBottomConnection());
+        appendIf(sb, "Adet", q.getQuantity() != null ? String.valueOf(q.getQuantity()) : null);
+        sb.append("  Sertifika : ").append(Boolean.TRUE.equals(q.getCertificateRequested()) ? "İsteniyor" : "İstenmiyor").append("\n");
+        if (q.getNote() != null && !q.getNote().isBlank()) {
+            sb.append("\nNot:\n").append(q.getNote()).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private static void appendIf(StringBuilder sb, String label, String value) {
+        if (value != null && !value.isBlank()) {
+            sb.append("  ").append(label).append(" : ").append(value).append("\n");
+        }
+    }
+
+    private static String safe(String v, String fallback) {
+        return (v != null && !v.isBlank()) ? v : fallback;
+    }
+
+    private static String quoteStatusLabel(String status) {
+        if (status == null) return "Yeni Talep";
+        switch (status) {
+            case "NEW":        return "Yeni Talep";
+            case "CONTACTED":  return "Müşteri Arandı";
+            case "OFFER_SENT": return "Teklif Gönderildi";
+            case "CLOSED":     return "Tamamlandı";
+            case "CANCELLED":  return "İptal";
+            default:           return status;
+        }
     }
 }

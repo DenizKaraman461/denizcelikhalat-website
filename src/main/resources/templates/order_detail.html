@@ -79,6 +79,7 @@
             </ul>
             <div class="nav-auth">
                 <a sec:authorize="hasRole('ADMIN')" href="/admin/orders" class="btn-nav-ghost"><i class="bi bi-clipboard-data"></i> Admin Siparişleri</a>
+                <a sec:authorize="hasRole('ADMIN')" href="/admin/quotes" class="btn-nav-ghost"><i class="bi bi-file-earmark-text"></i> Admin Teklifleri</a>
                 <a href="/orders" class="btn-nav-gold"><i class="bi bi-box-seam"></i> Siparişlerim</a>
                 <form th:action="@{/logout}" method="post" style="display:inline-flex; margin:0;">
                     <button type="submit" class="btn-nav-ghost" style="background:transparent; cursor:pointer;"><i class="bi bi-box-arrow-right"></i> Çıkış</button>
@@ -145,7 +146,7 @@
                         <div class="meas" th:if="${item.selectedMeasurement != null and !item.selectedMeasurement.isEmpty()}"
                              th:text="${item.measurementAmount != null and item.product != null and item.product.measurementMode != null and item.product.measurementMode.name() == 'PRESET_AMOUNT'}
                                       ? |Ölçü: ${item.selectedMeasurement} · ${item.measurementAmount.stripTrailingZeros().toPlainString()}${item.product.measurementUnitLabel != null and !item.product.measurementUnitLabel.isEmpty() ? ' ' + item.product.measurementUnitLabel : ''}|
-                                      : |Ölçü: ${item.selectedMeasurement}|">Ölçü: 5 metre</div>
+                                      : 'Ölçü: ' + ${item.selectedMeasurement}">Ölçü: 5 metre</div>
                     </td>
                     <td class="num" th:text="${item.quantity}">1</td>
                     <td class="num" th:text="${item.price != null} ? |${#numbers.formatDecimal(item.price,1,'POINT',2,'COMMA')} ${item.currencySnapshot != null ? item.currencySnapshot.symbol : (item.product != null and item.product.currency != null ? item.product.currency.symbol : '$')}| : '—'">0,00 $</td>
