@@ -44,12 +44,21 @@ public class QuoteController {
      */
     @PostMapping("/quote/create")
     public String createQuote(@ModelAttribute QuoteRequest quoteRequest,
+                              java.security.Principal principal,
                               RedirectAttributes redirectAttributes) {
         // Ürün adı snapshot'ı (varsa) ve dönüş hedefi için ürünü bul.
         Long productId = quoteRequest.getProductId();
         Product product = (productId != null) ? productService.getById(productId) : null;
         if (product != null) {
             quoteRequest.setProductName(product.getName());
+        }
+
+        // Giriş yapan kullanıcıyla eşleştir: userEmail = giriş emaili; form email'i boşsa onu da doldur.
+        if (principal != null) {
+            quoteRequest.setUserEmail(principal.getName());
+            if (quoteRequest.getEmail() == null || quoteRequest.getEmail().isBlank()) {
+                quoteRequest.setEmail(principal.getName());
+            }
         }
 
         if (quoteRequest.getCertificateRequested() == null) {
@@ -69,6 +78,19 @@ public class QuoteController {
 
         // Aynı ürün detay sayfasına geri dön; productId yoksa ürün listesine.
         return (productId != null) ? ("redirect:/products/" + productId) : "redirect:/products";
+    }
+
+    /**
+     * Müşteri: kendi teklif talepleri ("Tekliflerim"). Yalnızca authenticated (SecurityConfig).
+     * Salt görüntüleme; durum değiştirme yok.
+     */
+    @GetMapping("/my-quotes")
+    public String myQuotes(java.security.Principal principal, Model model) {
+        if (principal == null) {
+            return "redirect:/login";
+        }
+        model.addAttribute("quotes", quoteRequestRepository.findForCustomer(principal.getName()));
+        return "my_quotes";
     }
 
     /**

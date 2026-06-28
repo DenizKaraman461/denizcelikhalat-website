@@ -19,6 +19,10 @@ public class QuoteRequest {
     @Column(name = "product_id")
     private Long productId;
 
+    // Giriş yapan kullanıcıyla eşleştirme (Tekliflerim sayfası). Anonim taleplerde null kalabilir.
+    @Column(name = "user_email", length = 180)
+    private String userEmail;
+
     @Column(name = "product_name", length = 255)
     private String productName;
 
@@ -95,6 +99,14 @@ public class QuoteRequest {
 
     public void setProductId(Long productId) {
         this.productId = productId;
+    }
+
+    public String getUserEmail() {
+        return userEmail;
+    }
+
+    public void setUserEmail(String userEmail) {
+        this.userEmail = userEmail;
     }
 
     public String getProductName() {

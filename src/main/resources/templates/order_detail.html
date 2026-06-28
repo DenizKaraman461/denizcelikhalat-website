@@ -67,27 +67,7 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg fixed-top site-nav">
-    <div class="container">
-        <a class="navbar-brand" href="/"><img src="/uploads/deniz-logo.png" alt="Deniz Çelik Halat" class="brand-logo" /></a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"><i class="bi bi-list"></i></button>
-        <div class="collapse navbar-collapse" id="mainNav">
-            <ul class="navbar-nav mx-lg-auto mb-2 mb-lg-0 main-links">
-                <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house-fill"></i> Anasayfa</a></li>
-                <li class="nav-item"><a class="nav-link" href="/products"><i class="bi bi-grid-3x3-gap-fill"></i> Ürünler</a></li>
-                <li class="nav-item"><a class="nav-link" href="/cart"><i class="bi bi-cart-fill"></i> Sepetim</a></li>
-            </ul>
-            <div class="nav-auth">
-                <a sec:authorize="hasRole('ADMIN')" href="/admin/orders" class="btn-nav-ghost"><i class="bi bi-clipboard-data"></i> Admin Siparişleri</a>
-                <a sec:authorize="hasRole('ADMIN')" href="/admin/quotes" class="btn-nav-ghost"><i class="bi bi-file-earmark-text"></i> Admin Teklifleri</a>
-                <a href="/orders" class="btn-nav-gold"><i class="bi bi-box-seam"></i> Siparişlerim</a>
-                <form th:action="@{/logout}" method="post" style="display:inline-flex; margin:0;">
-                    <button type="submit" class="btn-nav-ghost" style="background:transparent; cursor:pointer;"><i class="bi bi-box-arrow-right"></i> Çıkış</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</nav>
+<header th:replace="~{fragments/navbar :: navbar('orders')}"></header>
 
 <div class="shell">
 
