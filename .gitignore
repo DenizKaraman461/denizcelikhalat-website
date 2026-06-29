@@ -15,3 +15,24 @@ buildNumber.properties
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# Environment / secrets
+.env
+*.env
+application-local.properties
+
+# Uploaded product images / runtime uploads
+uploads/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db

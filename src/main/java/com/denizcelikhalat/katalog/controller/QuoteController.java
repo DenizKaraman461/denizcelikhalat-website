@@ -16,10 +16,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDateTime;
 
-/**
- * Teklif talepleri. /quote/create herkese açık (SecurityConfig), /admin/quotes yalnızca ADMIN
- * (/admin/** kuralı). Sepet/sipariş akışına dokunmaz.
- */
 @Controller
 public class QuoteController {
 
@@ -38,22 +34,17 @@ public class QuoteController {
         this.emailService = emailService;
     }
 
-    /**
-     * Ürün detay sayfasındaki "Teklif Al" formu buraya POST eder. Kaydeder ve aynı ürün
-     * detay sayfasına "Teklif talebiniz alındı" mesajıyla döner.
-     */
     @PostMapping("/quote/create")
     public String createQuote(@ModelAttribute QuoteRequest quoteRequest,
                               java.security.Principal principal,
                               RedirectAttributes redirectAttributes) {
-        // Ürün adı snapshot'ı (varsa) ve dönüş hedefi için ürünü bul.
+
         Long productId = quoteRequest.getProductId();
         Product product = (productId != null) ? productService.getById(productId) : null;
         if (product != null) {
             quoteRequest.setProductName(product.getName());
         }
 
-        // Giriş yapan kullanıcıyla eşleştir: userEmail = giriş emaili; form email'i boşsa onu da doldur.
         if (principal != null) {
             quoteRequest.setUserEmail(principal.getName());
             if (quoteRequest.getEmail() == null || quoteRequest.getEmail().isBlank()) {
@@ -71,19 +62,13 @@ public class QuoteController {
 
         quoteRequestRepository.save(quoteRequest);
 
-        // Bilgilendirme e-postaları (async + fail-safe; hata kaydı bozmaz)
         sendQuoteCreatedEmails(quoteRequest);
 
         redirectAttributes.addFlashAttribute("success", "Teklif talebiniz alındı. En kısa sürede sizinle iletişime geçeceğiz.");
 
-        // Aynı ürün detay sayfasına geri dön; productId yoksa ürün listesine.
         return (productId != null) ? ("redirect:/products/" + productId) : "redirect:/products";
     }
 
-    /**
-     * Müşteri: kendi teklif talepleri ("Tekliflerim"). Yalnızca authenticated (SecurityConfig).
-     * Salt görüntüleme; durum değiştirme yok.
-     */
     @GetMapping("/my-quotes")
     public String myQuotes(java.security.Principal principal, Model model) {
         if (principal == null) {
@@ -133,8 +118,10 @@ public class QuoteController {
                 ? q.getProductName() : ("Ürün ID: " + q.getProductId());
         String details = buildQuoteDetails(q);
 
-        // Müşteriye (email alanı varsa)
-        if (q.getEmail() != null && !q.getEmail().isBlank()) {
+        // Müşteriye (form email + giriş yapan userEmail; ikisi de doluysa İKİSİNE de)
+        String customerRecipients = joinRecipients(q.getEmail(), q.getUserEmail());
+
+        if (!customerRecipients.isBlank()) {
             String subject = "Teklif Talebiniz Alındı - " + code + " | Deniz Çelik Halat";
             String body = "Sayın " + safe(q.getCustomerName(), "Müşterimiz") + ",\n\n"
                     + "Teklif talebiniz tarafımıza ulaştı. En kısa sürede sizinle iletişime geçeceğiz.\n\n"
@@ -142,9 +129,9 @@ public class QuoteController {
                     + "Ürün     : " + product + "\n\n"
                     + details
                     + "\nDeniz Çelik Halat\nBornova, İzmir";
-            emailService.sendPlainText(q.getEmail(), subject, body);
-        }
 
+            emailService.sendPlainText(customerRecipients, subject, body);
+        }
         // Şirkete
         String adminSubject = "Yeni Teklif Talebi - " + code;
         String adminBody = "Yeni bir teklif talebi alındı.\n\n"
@@ -165,7 +152,8 @@ public class QuoteController {
         String product = (q.getProductName() != null && !q.getProductName().isBlank())
                 ? q.getProductName() : ("Ürün ID: " + q.getProductId());
 
-        if (q.getEmail() != null && !q.getEmail().isBlank()) {
+        String customerRecipients = joinRecipients(q.getEmail(), q.getUserEmail());
+        if (!customerRecipients.isBlank()) {
             String subject = "Teklif Talebiniz Güncellendi - " + code + " | Deniz Çelik Halat";
             String body = "Sayın " + safe(q.getCustomerName(), "Müşterimiz") + ",\n\n"
                     + "Teklif talebinizin durumu güncellendi.\n\n"
@@ -173,7 +161,7 @@ public class QuoteController {
                     + "Ürün     : " + product + "\n"
                     + "Yeni Durum : " + label + "\n\n"
                     + "Deniz Çelik Halat\nBornova, İzmir";
-            emailService.sendPlainText(q.getEmail(), subject, body);
+            emailService.sendPlainText(customerRecipients, subject, body);
         }
 
         String adminSubject = "Teklif Durumu Güncellendi - " + code;
@@ -224,5 +212,15 @@ public class QuoteController {
             case "CANCELLED":  return "İptal";
             default:           return status;
         }
+    }
+
+    private static String joinRecipients(String... emails) {
+        if (emails == null) return "";
+
+        return java.util.Arrays.stream(emails)
+                .filter(e -> e != null && !e.isBlank())
+                .map(String::trim)
+                .distinct()
+                .collect(java.util.stream.Collectors.joining(","));
     }
 }
