@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.*;
 import java.util.List;
 import java.util.Locale;
@@ -88,6 +89,13 @@ public class ProductServiceImpl implements ProductService {
         if (product.getInStock() == null) product.setInStock(Boolean.TRUE);
         if (product.getCurrency() == null) product.setCurrency(com.denizcelikhalat.katalog.model.PriceCurrency.USD);
 
+        // Kargo Ağırlığı (kg/metre) — AŞAMA 1: yalnızca doğrulama/kayıt, hesaplama YOK.
+        // Boş bırakılabilir; girilmişse 0'dan büyük olmalı (negatif/sıfır kabul edilmez.
+        if (product.getShippingWeightPerMeter() != null
+                && product.getShippingWeightPerMeter().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Kargo Ağırlığı (kg/metre) girilmişse 0'dan büyük olmalıdır.");
+        }
+
         if (imageFile != null && !imageFile.isEmpty()) {
             String imagePath = saveFile(imageFile);
             product.setImagePath("/uploads/" + imagePath);
@@ -136,6 +144,15 @@ public class ProductServiceImpl implements ProductService {
         } else if (existing.getCurrency() == null) {
             existing.setCurrency(com.denizcelikhalat.katalog.model.PriceCurrency.USD);
         }
+
+        // Kargo Ağırlığı (kg/metre) — AŞAMA 1: yalnızca doğrulama/kayıt, hesaplama YOK.
+        // Form alanı boş bırakılırsa null olarak kaydedilir (temizlenmiş sayılır); doluysa
+        // 0'dan büyük olmalı (negatif/sıfır kabul edilmez).
+        if (updatedProduct.getShippingWeightPerMeter() != null
+                && updatedProduct.getShippingWeightPerMeter().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Kargo Ağırlığı (kg/metre) girilmişse 0'dan büyük olmalıdır.");
+        }
+        existing.setShippingWeightPerMeter(updatedProduct.getShippingWeightPerMeter());
 
         if (imageFile != null && !imageFile.isEmpty()) {
             String imagePath = saveFile(imageFile);

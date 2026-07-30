@@ -3,10 +3,13 @@ package com.denizcelikhalat.katalog.controller;
 import com.denizcelikhalat.katalog.model.Cart;
 import com.denizcelikhalat.katalog.model.CheckoutForm;
 import com.denizcelikhalat.katalog.model.Order;
+import com.denizcelikhalat.katalog.model.PaymentStatus;
 import com.denizcelikhalat.katalog.model.OrderStatus;
 import com.denizcelikhalat.katalog.model.User;
 import com.denizcelikhalat.katalog.service.CartService;
 import com.denizcelikhalat.katalog.service.OrderService;
+import com.denizcelikhalat.katalog.service.ShippingCostService;
+import com.denizcelikhalat.katalog.service.ShippingService;
 import com.denizcelikhalat.katalog.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -25,13 +28,19 @@ public class OrderController {
     private final OrderService orderService;
     private final CartService cartService;
     private final UserRepository userRepository;
+    private final ShippingService shippingService;
+    private final ShippingCostService shippingCostService;
 
     public OrderController(OrderService orderService,
                            CartService cartService,
-                           UserRepository userRepository) {
+                           UserRepository userRepository,
+                           ShippingService shippingService,
+                           ShippingCostService shippingCostService) {
         this.orderService = orderService;
         this.cartService = cartService;
         this.userRepository = userRepository;
+        this.shippingService = shippingService;
+        this.shippingCostService = shippingCostService;
     }
 
     // ===================== CHECKOUT AKIŞI =====================
@@ -55,6 +64,11 @@ public class OrderController {
             model.addAttribute("checkoutForm", prefillForm(principal.getName()));
         }
         model.addAttribute("cart", cart);
+        // AŞAMA 3A/4B: sepet ağırlığı + tahmini kargo ücreti (yalnızca GÖRÜNTÜLEME;
+        // sipariş oluşturma/ödeme akışı etkilenmez).
+        var shippingCalculation = shippingService.calculateCartWeight(cart);
+        model.addAttribute("shippingCalculation", shippingCalculation);
+        model.addAttribute("shippingCostResult", shippingCostService.calculateShippingCost(shippingCalculation));
         return "checkout";
     }
 
@@ -89,19 +103,29 @@ public class OrderController {
             model.addAttribute("errors", errors);
             model.addAttribute("checkoutForm", form); // girilen değerler korunur
             model.addAttribute("cart", cart);
+            var shippingCalculation = shippingService.calculateCartWeight(cart);
+            model.addAttribute("shippingCalculation", shippingCalculation);
+            model.addAttribute("shippingCostResult", shippingCostService.calculateShippingCost(shippingCalculation));
             return "checkout";
         }
 
-        // ---- Sipariş oluştur ----
+        // ---- Sipariş oluştur (PENDING) ----
         try {
             Order order = orderService.placeOrder(principal.getName(), form);
             // PRG: yenilemede tekrar sipariş oluşmasın diye redirect.
-            return "redirect:/checkout/success/" + order.getId();
+            // Kartla ödeme akışına gir: /checkout/pay/{id} tutarı/para birimini doğrulayıp
+            // iyzico ödeme sayfasına yönlendirir. Ödeme başlatılamazsa (örn. karışık para
+            // birimi, config eksik) sipariş kaybolmaz; PaymentController mevcut sipariş özeti
+            // sayfasına (checkout/success) hata mesajıyla geri döner.
+            return "redirect:/checkout/pay/" + order.getId();
         } catch (IllegalStateException e) {
             // Ürün pasif/stokta yok gibi durumlar -> formu hata ile tekrar göster
             model.addAttribute("errors", List.of(e.getMessage()));
             model.addAttribute("checkoutForm", form);
             model.addAttribute("cart", cart);
+            var shippingCalculation = shippingService.calculateCartWeight(cart);
+            model.addAttribute("shippingCalculation", shippingCalculation);
+            model.addAttribute("shippingCostResult", shippingCostService.calculateShippingCost(shippingCalculation));
             return "checkout";
         }
     }
@@ -125,6 +149,14 @@ public class OrderController {
         if (!admin && (ownerEmail == null || !ownerEmail.equals(principal.getName()))) {
             // Başkasının siparişi -> kendi siparişlerine yönlendir
             return "redirect:/orders";
+        }
+
+        // ÖNEMLİ: Bu sayfa yalnızca ödeme GERÇEKTEN tamamlanmışsa (paymentStatus=PAID)
+        // gösterilir. Aksi halde kart bilgisi alınmadan "sipariş tamamlandı" izlenimi
+        // verilmiş olur. Ödeme PENDING/FAILED ise kullanıcı sipariş detayına yönlendirilir;
+        // orada ödeme durumuna uygun banner ("Ödemeye Devam Et" / "Ödemeyi Tekrar Dene") gösterilir.
+        if (order.getPaymentStatus() != PaymentStatus.PAID) {
+            return "redirect:/orders/" + orderId;
         }
 
         model.addAttribute("order", order);
@@ -226,6 +258,22 @@ public class OrderController {
                                     RedirectAttributes redirectAttributes) {
         orderService.updateOrderStatus(id, status);
         redirectAttributes.addFlashAttribute("success", "Sipariş durumu güncellendi.");
+        return "redirect:/admin/orders/" + id;
+    }
+
+    /**
+     * AŞAMA 8: Kargo operasyonu — admin siparişi fiilen kargoya verdiğinde kargo firması +
+     * takip numarasını kaydeder, gönderim zamanını (shippedAt) yazar ve durumu SHIPPED yapar.
+     * Mevcut ödeme akışına (PaymentService/IyzicoClient) ve mail sistemine HİÇ dokunmaz —
+     * bkz. OrderService.markOrderAsShipped. /admin/** zaten ADMIN rolü ister (SecurityConfig).
+     */
+    @PostMapping("/admin/orders/{id}/ship")
+    public String shipOrder(@PathVariable Long id,
+                            @RequestParam(value = "shippingCompany", required = false) String shippingCompany,
+                            @RequestParam(value = "shippingTrackingNumber", required = false) String shippingTrackingNumber,
+                            RedirectAttributes redirectAttributes) {
+        orderService.markOrderAsShipped(id, shippingCompany, shippingTrackingNumber);
+        redirectAttributes.addFlashAttribute("success", "Sipariş kargoya verildi olarak işaretlendi.");
         return "redirect:/admin/orders/" + id;
     }
 }

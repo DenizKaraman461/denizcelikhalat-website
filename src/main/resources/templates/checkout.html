@@ -79,6 +79,9 @@
         .grand .amt{font-family:var(--f-mono); font-weight:700; font-size:1.5rem; color:var(--gold); text-shadow:0 0 14px rgba(255,215,0,.35)}
         .btn-submit{width:100%; margin-top:22px; padding:.95rem; border:none; border-radius:12px; cursor:pointer; font-family:var(--f-display); font-weight:600; letter-spacing:.08em; text-transform:uppercase; font-size:1.12rem; color:#100d00; background:linear-gradient(180deg,#FFE970,#FFD700 55%,#E9C200); box-shadow:0 10px 28px rgba(255,215,0,.3); transition:transform .2s, box-shadow .2s, filter .2s; display:flex; align-items:center; justify-content:center; gap:10px}
         .btn-submit:hover{transform:translateY(-2px); box-shadow:0 16px 40px rgba(255,215,0,.5); filter:brightness(1.05)}
+        .checkout-pay-badges{display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:14px; padding-top:14px; border-top:1px dashed var(--line)}
+        .cpb-chip{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:9px; border:1px solid var(--line); background:rgba(255,215,0,.05); color:#e6e6e6; font-family:var(--f-mono); font-size:.74rem; font-weight:600}
+        .cpb-chip i{color:var(--gold); font-size:.95rem}
         .btn-back{display:inline-flex; align-items:center; gap:8px; margin-top:14px; color:var(--muted); text-decoration:none; font-size:.86rem}
         .btn-back:hover{color:var(--gold)}
         a:focus-visible,button:focus-visible,.form-control:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
@@ -88,7 +91,31 @@
 </head>
 <body>
 
-<header th:replace="~{fragments/navbar :: navbar('cart')}"></header>
+<nav class="navbar navbar-expand-lg fixed-top site-nav">
+    <div class="container">
+        <a class="navbar-brand" href="/"><img src="/uploads/deniz-logo.png" alt="Deniz Çelik Halat" class="brand-logo" /></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Menüyü aç/kapat">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav mx-lg-auto mb-2 mb-lg-0 main-links">
+                <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house-fill"></i> Anasayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="/products"><i class="bi bi-grid-3x3-gap-fill"></i> Ürünler</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/cart"><i class="bi bi-cart-fill"></i> Sepetim</a></li>
+                <li class="nav-item"><a class="nav-link" href="/#markalarimiz-hakkimizda"><i class="bi bi-info-circle-fill"></i> Hakkımızda</a></li>
+            </ul>
+            <div class="nav-auth">
+                <a sec:authorize="hasRole('ADMIN')" href="/admin/orders" class="btn-nav-ghost"><i class="bi bi-clipboard-data"></i> Admin Siparişleri</a>
+                <a sec:authorize="hasRole('ADMIN')" href="/admin/quotes" class="btn-nav-ghost"><i class="bi bi-file-earmark-text"></i> Admin Teklifleri</a>
+                <a href="/orders" class="btn-nav-gold"><i class="bi bi-box-seam"></i> Siparişlerim</a>
+                <a sec:authorize="isAuthenticated()" href="/my-quotes" class="btn-nav-ghost"><i class="bi bi-chat-left-text"></i> Tekliflerim</a>
+                <form th:action="@{/logout}" method="post" style="display:inline-flex; margin:0;">
+                    <button type="submit" class="btn-nav-ghost" style="background:transparent; cursor:pointer;"><i class="bi bi-box-arrow-right"></i> Çıkış Yap</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</nav>
 
 <div class="shell">
 
@@ -163,19 +190,85 @@
 
                 <div class="sum-divider"></div>
 
-                <!-- Para birimine göre gruplu toplamlar (dönüşüm YOK) -->
+                <!-- AŞAMA 4B: Ürün Toplamı / Tahmini Kargo / Genel Toplam AYRI satırlar olarak
+                     gösterilir. ÖNEMLİ: Genel Toplam bu aşamada kargo ile TOPLANMAZ — hâlâ
+                     ürün toplamıyla AYNIDIR (kargo, sipariş/ödeme tutarına henüz eklenmedi;
+                     bu birleştirme AŞAMA 6'da yapılacaktır). Para birimine göre gruplu
+                     toplamlar (dönüşüm YOK) her iki satırda da aynı şekilde gösterilir. -->
                 <div class="grand" style="display:block;">
-                    <span class="lbl" style="display:block; margin-bottom:10px;">Para Birimine Göre Toplamlar</span>
+                    <span class="lbl" style="display:block; margin-bottom:10px;">Ürün Toplamı</span>
+                    <div th:each="ct : ${cart.totalsByCurrency}"
+                         style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:6px;">
+                        <span class="lbl" style="font-size:.95rem;" th:text="|${ct.key.label} Toplam|">EUR Toplam</span>
+                        <span class="amt" th:text="|${#numbers.formatDecimal(ct.value,1,'POINT',2,'COMMA')} ${ct.key.symbol}|">0,00 €</span>
+                    </div>
+
+                    <!-- AŞAMA 3A: sadece görüntüleme — kargo ÜCRETİ değil, tahmini AĞIRLIK -->
+                    <div th:if="${shippingCalculation != null and shippingCalculation.weightCalculated}"
+                         style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:6px;">
+                        <span class="lbl" style="font-size:.95rem;">Tahmini Kargo Ağırlığı</span>
+                        <span class="amt" th:text="${#numbers.formatDecimal(shippingCalculation.totalWeight,1,'POINT',2,'COMMA')} + ' kg'">0,00 kg</span>
+                    </div>
+
+                    <!-- AŞAMA 3B: sadece lojistik sınıflandırma bilgisi — kargo ÜCRETİ değil -->
+                    <div th:if="${shippingCalculation != null and shippingCalculation.category != null}"
+                         style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:6px;">
+                        <span class="lbl" style="font-size:.95rem;">Kargo Tipi</span>
+                        <span th:switch="${shippingCalculation.category.name()}">
+                            <span class="amt" th:case="'STANDARD'" style="color:#8ff0b6; font-size:1rem;" th:text="${shippingCalculation.categoryMessage}">Standart Kargo</span>
+                            <span class="amt" th:case="'HEAVY_CARGO'" style="color:#ffcf7a; font-size:1rem;" th:text="${shippingCalculation.categoryMessage}">Ağır Kargo</span>
+                            <span class="amt" th:case="*" style="color:var(--gold-2); font-size:1rem;" th:text="${shippingCalculation.categoryMessage}">Manuel İnceleme Gerekli</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="sum-divider"></div>
+
+                <!-- AŞAMA 4B: Tahmini Kargo (ayrı satır — henüz Genel Toplam'a eklenmez) -->
+                <div class="grand" style="display:block;">
+                    <span class="lbl" style="display:block; margin-bottom:10px;">Tahmini Kargo</span>
+                    <div th:if="${shippingCostResult != null and shippingCostResult.costCalculated}"
+                         style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
+                        <span class="lbl" style="font-size:.95rem;">Kargo Ücreti</span>
+                        <span class="amt" th:text="${#numbers.formatDecimal(shippingCostResult.shippingCost,1,'POINT',2,'COMMA')} + ' TL'">0,00 TL</span>
+                    </div>
+                    <div th:if="${shippingCostResult == null or !shippingCostResult.costCalculated}"
+                         style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
+                        <span class="lbl" style="font-size:.95rem;">Kargo Ücreti</span>
+                        <span style="color:var(--gold-2); font-size:.88rem; text-align:right; max-width:220px;">
+                            Kargo ücreti manuel olarak belirlenecektir.
+                        </span>
+                    </div>
+                </div>
+
+                <div class="sum-divider"></div>
+
+                <!-- AŞAMA 4B: Genel Toplam — ÖNEMLİ: bu aşamada kargo ile TOPLANMAZ, ürün
+                     toplamıyla birebir AYNIDIR (bkz. yukarıdaki not). -->
+                <div class="grand" style="display:block;">
+                    <span class="lbl" style="display:block; margin-bottom:10px;">Genel Toplam</span>
                     <div th:each="ct : ${cart.totalsByCurrency}"
                          style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:6px;">
                         <span class="lbl" style="font-size:.95rem;" th:text="|${ct.key.label} Toplam|">EUR Toplam</span>
                         <span class="amt" th:text="|${#numbers.formatDecimal(ct.value,1,'POINT',2,'COMMA')} ${ct.key.symbol}|">0,00 €</span>
                     </div>
                 </div>
+                <p th:if="${shippingCalculation != null and shippingCalculation.requiresManualReview}"
+                   style="margin:10px 0 0; font-size:.82rem; color:var(--gold-2);">
+                    <i class="bi bi-info-circle-fill"></i> Kargo ağırlığı manuel kontrol edilecek.
+                </p>
 
                 <button type="submit" class="btn-submit">
-                    <i class="bi bi-bag-check-fill"></i> Sipariş Talebi Gönder
+                    <i class="bi bi-credit-card-fill"></i> Kartla Öde
                 </button>
+                <p style="margin:10px 0 0; font-size:.78rem; color:var(--muted); text-align:center;">
+                    <i class="bi bi-shield-lock-fill"></i> Kart bilgileriniz sitemizde tutulmaz; ödeme sayfasına güvenli şekilde yönlendirilirsiniz.
+                </p>
+                <div class="checkout-pay-badges">
+                    <span class="cpb-chip"><i class="bi bi-credit-card-2-front-fill"></i> VISA</span>
+                    <span class="cpb-chip"><i class="bi bi-credit-card-fill"></i> Mastercard</span>
+                    <span class="cpb-chip"><i class="bi bi-shield-lock-fill"></i> iyzico ile Güvenli Ödeme</span>
+                </div>
             </div>
 
         </div>

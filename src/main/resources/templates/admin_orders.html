@@ -116,7 +116,11 @@
 
         /* Footer */
         .site-footer{border-top:1px solid var(--line); background:rgba(0,0,0,.6); backdrop-filter:blur(8px); padding:46px 0 0}
-        .footer-inner{display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:30px}
+        .footer-inner{display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr; gap:26px}
+        .footer-payments{margin-top:30px; padding-top:20px; border-top:1px dashed var(--line); display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap}
+        .pay-label{font-family:var(--f-mono); font-size:.7rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-right:4px}
+        .pay-chip{display:inline-flex; align-items:center; gap:7px; padding:7px 14px; border-radius:9px; border:1px solid var(--line); background:rgba(255,215,0,.05); color:#e6e6e6; font-family:var(--f-mono); font-size:.78rem; font-weight:600}
+        .pay-chip i{color:var(--gold); font-size:1rem}
         .f-logo{height:54px; margin-bottom:12px; filter:drop-shadow(0 0 8px rgba(255,215,0,.25))}
         .site-footer p{color:var(--muted); font-size:.9rem; line-height:1.6; margin:0}
         .f-col h4{font-family:var(--f-display); text-transform:uppercase; letter-spacing:.06em; color:var(--gold); font-size:1.05rem; margin:0 0 14px}
@@ -150,6 +154,9 @@
             color:var(--gold-2); border:1px solid var(--line); padding:4px 10px; border-radius:999px;
             background:rgba(255,215,0,.05); white-space:nowrap;
         }
+        .status-pill.ok{color:#8ff0b6; border-color:rgba(56,200,120,.4); background:rgba(56,200,120,.1)}
+        .status-pill.warn{color:#ffcf7a; border-color:rgba(255,180,0,.4); background:rgba(255,180,0,.08)}
+        .status-pill.bad{color:#ff9b9b; border-color:rgba(255,82,82,.4); background:rgba(255,82,82,.1)}
         .status-form{display:flex; flex-direction:column; gap:6px; align-items:stretch}
         .status-select{
             background:rgba(0,0,0,.45); border:1px solid var(--line); color:#fff;
@@ -169,7 +176,29 @@
 <body>
 
 <!-- ===== ORTAK NAVBAR ===== -->
-<header th:replace="~{fragments/navbar :: navbar('admin-orders')}"></header>
+<nav class="navbar navbar-expand-lg fixed-top site-nav">
+    <div class="container">
+        <a class="navbar-brand" href="/"><img src="/uploads/deniz-logo.png" alt="Deniz Çelik Halat" class="brand-logo" /></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Menüyü aç/kapat">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav mx-lg-auto mb-2 mb-lg-0 main-links">
+                <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house-fill"></i> Anasayfa</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/products"><i class="bi bi-grid-3x3-gap-fill"></i> Ürünler</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/quotes"><i class="bi bi-file-earmark-text"></i> Teklifler</a></li>
+                <li class="nav-item"><a class="nav-link" href="/cart"><i class="bi bi-cart-fill"></i> Sepetim</a></li>
+                <li class="nav-item"><a class="nav-link" href="/#markalarimiz-hakkimizda"><i class="bi bi-info-circle-fill"></i> Hakkımızda</a></li>
+            </ul>
+            <div class="nav-auth">
+                <a sec:authorize="hasRole('ADMIN')" href="/admin/orders" class="btn-nav-ghost"><i class="bi bi-clipboard-data"></i> Admin Siparişleri</a>
+                <a href="/login" class="btn-nav-ghost"><i class="bi bi-box-arrow-in-right"></i> Giriş Yap</a>
+                <a href="/register" class="btn-nav-gold"><i class="bi bi-person-plus-fill"></i> Kayıt Ol</a>
+                <a href="/login" class="nav-shield" title="Admin Girişi"><i class="bi bi-shield-lock"></i></a>
+            </div>
+        </div>
+    </div>
+</nav>
 
 <div class="shell">
 
@@ -195,6 +224,7 @@
                         <th>Teslimat Adresi</th>
                         <th>Genel Toplam</th>
                         <th>Durum</th>
+                        <th>Ödeme</th>
                         <th>Değerlendirme</th>
                         <th>Güncelle</th>
                     </tr>
@@ -224,9 +254,29 @@
                         <td>
                             <span class="status-pill">
                             <span th:if="${order.status.name() == 'PENDING'}">Bekliyor</span>
+                            <span th:if="${order.status.name() == 'PAID'}">Ödendi</span>
                             <span th:if="${order.status.name() == 'PREPARING'}">Hazırlanıyor</span><span th:if="${order.status.name() == 'SHIPPED'}">Kargoya Verildi</span>
                             <span th:if="${order.status.name() == 'DELIVERED'}">Teslim Edildi</span>
                             </span>
+                        </td>
+
+                        <td>
+                            <span class="status-pill ok" th:if="${order.paymentStatus.name() == 'PAID'}">Ödendi</span>
+                            <span class="status-pill warn" th:if="${order.paymentStatus.name() == 'PENDING'}">Ödeme Bekleniyor</span>
+                            <span class="status-pill bad" th:if="${order.paymentStatus.name() == 'FAILED' or order.paymentStatus.name() == 'CANCELLED'}">Ödeme Başarısız</span>
+
+                            <!-- Kargo (AŞAMA 7A) — küçük badge, SNAPSHOT okunur, hesaplama yapılmaz.
+                                 Listeyi kalabalıklaştırmamak için yeni sütun açılmadı; mevcut
+                                 Ödeme hücresinin altına eklendi. Eski siparişlerde (shippingCategory
+                                 null) hiçbir şey gösterilmez. -->
+                            <div th:if="${order.shippingCategory != null}" style="margin-top:6px;">
+                                <span class="status-pill bad" th:if="${order.shippingCategory == 'MANUAL_REVIEW'}">MANUEL</span>
+                                <span class="status-pill" th:if="${order.shippingCategory != 'MANUAL_REVIEW'}"
+                                      th:text="${order.shippingCategory}">STANDARD</span>
+                                <div th:if="${order.shippingWeight != null}"
+                                     style="font-size:.72rem; color:var(--muted); margin-top:2px;"
+                                     th:text="${#numbers.formatDecimal(order.shippingWeight,1,'POINT',2,'COMMA')} + ' kg'">0,00 kg</div>
+                            </div>
                         </td>
 
                         <td>
@@ -247,9 +297,10 @@
                                             th:value="${st}"
                                             th:selected="${st == order.status}"
                                             th:text="${st.name() == 'PENDING' ? 'Bekliyor' :
+                                                      (st.name() == 'PAID' ? 'Ödendi' :
                                                       (st.name() == 'PREPARING' ? 'Hazırlanıyor' :
                                                       (st.name() == 'SHIPPED' ? 'Kargoya Verildi' :
-                                                      (st.name() == 'DELIVERED' ? 'Teslim Edildi' : 'İptal Edildi')))}">
+                                                      (st.name() == 'DELIVERED' ? 'Teslim Edildi' : 'İptal Edildi'))))}">
                                     </option>
                                 </select>
                                 <button type="submit" class="btn-update">
@@ -289,6 +340,19 @@
             <a href="/cart"><i class="bi bi-cart-fill"></i> Sepetim</a>
             <a href="/#markalarimiz-hakkimizda"><i class="bi bi-info-circle-fill"></i> Hakkımızda</a>
         </div>
+        <div class="f-col">
+            <h4>Yasal</h4>
+            <a href="/mesafeli-satis-sozlesmesi"><i class="bi bi-file-earmark-text-fill"></i> Mesafeli Satış Sözleşmesi</a>
+            <a href="/teslimat-ve-iade"><i class="bi bi-truck"></i> Teslimat ve İade</a>
+            <a href="/gizlilik-politikasi"><i class="bi bi-shield-lock-fill"></i> Gizlilik Politikası</a>
+        </div>
+    </div>
+
+    <div class="footer-payments">
+        <span class="pay-label">Güvenli Ödeme</span>
+        <span class="pay-chip"><i class="bi bi-credit-card-2-front-fill"></i> VISA</span>
+        <span class="pay-chip"><i class="bi bi-credit-card-fill"></i> Mastercard</span>
+        <span class="pay-chip"><i class="bi bi-shield-lock-fill"></i> iyzico ile Güvenli Ödeme</span>
     </div>
     <div class="footer-base">© 2025 Deniz Çelik Halat — Tüm hakları saklıdır.</div>
 </footer>

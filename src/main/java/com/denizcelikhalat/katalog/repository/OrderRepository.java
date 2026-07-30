@@ -35,4 +35,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
            "LEFT JOIN FETCH i.product " +
            "WHERE o.id = :id")
     Optional<Order> findDetailById(@Param("id") Long id);
+
+    // Ödeme callback/webhook'unda sağlayıcının gönderdiği token ile siparişi bulmak için.
+    Optional<Order> findByPaymentToken(String paymentToken);
 }

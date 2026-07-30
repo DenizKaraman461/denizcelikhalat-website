@@ -64,6 +64,12 @@ public class Product {
     @Column(nullable = false, length = 3)
     private PriceCurrency currency = PriceCurrency.USD;
 
+    // ===== Kargo (AŞAMA 1: yalnızca veri modeli — kargo HESAPLAMASI burada yapılmaz) =====
+    // Bir metre ürünün kilogram karşılığı (örn. 6mm çelik halat: 0.14, 10mm: 0.40).
+    // Eski ürünler için NULL olabilir. Negatif değer kabul edilmez (bkz. ProductServiceImpl).
+    @Column(name = "shipping_weight_per_meter", precision = 10, scale = 4)
+    private BigDecimal shippingWeightPerMeter;
+
     public Product() {
     }
 
@@ -231,5 +237,13 @@ public class Product {
 
     public void setCurrency(PriceCurrency currency) {
         this.currency = currency;
+    }
+
+    public BigDecimal getShippingWeightPerMeter() {
+        return shippingWeightPerMeter;
+    }
+
+    public void setShippingWeightPerMeter(BigDecimal shippingWeightPerMeter) {
+        this.shippingWeightPerMeter = shippingWeightPerMeter;
     }
 }

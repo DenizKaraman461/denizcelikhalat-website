@@ -10,9 +10,6 @@ public class KatalogApplication {
 	public static void main(String[] args) {
 		// Şu iki satırı ekle:
 		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-		System.out.println("====== BENİM HASHİM ======");
-		System.out.println(encoder.encode("12345"));
-		System.out.println("==========================");
 
 		SpringApplication.run(KatalogApplication.class, args);
 	}

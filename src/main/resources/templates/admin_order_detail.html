@@ -57,6 +57,10 @@
         .grand .amt{font-family:var(--f-mono); font-weight:700; font-size:1.6rem; color:var(--gold); text-shadow:0 0 14px rgba(255,215,0,.35)}
         .status-form{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
         .form-select{background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); color:#fff; border-radius:10px; padding:.6rem .9rem; min-width:200px}
+        .form-control{background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); color:#fff; border-radius:10px; padding:.6rem .9rem}
+        .form-control::placeholder{color:#6f6f6f}
+        .form-control:focus{outline:none; border-color:var(--gold); box-shadow:0 0 0 .15rem rgba(255,215,0,.16)}
+        .field-label{display:block; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:6px}
         .form-select:focus{outline:none; border-color:var(--gold); box-shadow:0 0 0 .15rem rgba(255,215,0,.16)}
         .form-select option{background:#0c0c0e; color:#fff}
         .btn-gold{display:inline-flex; align-items:center; gap:8px; padding:.66rem 1.3rem; border:none; border-radius:11px; cursor:pointer; color:#100d00; text-decoration:none; font-weight:700; background:linear-gradient(180deg,#FFE970,#FFD700 55%,#E9C200)}
@@ -68,7 +72,25 @@
 </head>
 <body>
 
-<header th:replace="~{fragments/navbar :: navbar('admin-orders')}"></header>
+<nav class="navbar navbar-expand-lg fixed-top site-nav">
+    <div class="container">
+        <a class="navbar-brand" href="/"><img src="/uploads/deniz-logo.png" alt="Deniz Çelik Halat" class="brand-logo" /></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"><i class="bi bi-list"></i></button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav mx-lg-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a class="nav-link" href="/admin/orders"><i class="bi bi-clipboard-data"></i> Siparişler</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/quotes"><i class="bi bi-file-earmark-text"></i> Teklifler</a></li>
+                <li class="nav-item"><a class="nav-link" href="/products"><i class="bi bi-grid-3x3-gap-fill"></i> Ürünler</a></li>
+            </ul>
+            <div class="nav-auth">
+                <a sec:authorize="hasRole('ADMIN')" href="/admin/orders" class="btn-nav-ghost"><i class="bi bi-clipboard-data"></i> Admin Siparişleri</a>
+                <form th:action="@{/logout}" method="post" style="display:inline-flex; margin:0;">
+                    <button type="submit" class="btn-nav-ghost" style="background:transparent; cursor:pointer;"><i class="bi bi-box-arrow-right"></i> Çıkış</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</nav>
 
 <div class="shell">
 
@@ -91,6 +113,25 @@
                 <div class="v" th:text="${order.orderDate != null} ? ${#temporals.format(order.orderDate,'dd.MM.yyyy HH:mm')} : '—'">—</div></div>
             <div class="info-row"><div class="k">Durum</div>
                 <div class="v" th:text="${order.status}">—</div></div>
+            <div class="info-row"><div class="k">Ödeme Durumu</div>
+                <div class="v" th:switch="${order.paymentStatus.name()}">
+                    <span th:case="'PAID'" style="color:#8ff0b6;">Ödendi</span>
+                    <span th:case="'PENDING'" style="color:#ffcf7a;">Ödeme Bekleniyor</span>
+                    <span th:case="'FAILED'" style="color:#ff9b9b;">Ödeme Başarısız</span>
+                    <span th:case="'CANCELLED'" style="color:#ff9b9b;">Ödeme İptal Edildi</span>
+                    <span th:case="*" th:text="${order.paymentStatus}">—</span>
+                    <span th:if="${order.paymentProvider != null}" th:text="' (' + ${order.paymentProvider} + ')'" style="color:var(--muted); font-size:.85em;"></span>
+                </div>
+            </div>
+            <div class="info-row" th:if="${order.paidAt != null}"><div class="k">Ödeme Tarihi</div>
+                <div class="v" th:text="${#temporals.format(order.paidAt,'dd.MM.yyyy HH:mm')}">—</div></div>
+            <div class="info-row" th:if="${order.paymentAmount != null}"><div class="k">Kartla Tahsil Edilen Tutar</div>
+                <div class="v" th:text="${#numbers.formatDecimal(order.paymentAmount,1,'POINT',2,'COMMA')} + ' ' + ${order.paymentCurrency}">—</div></div>
+            <div class="info-row" th:if="${order.paymentExchangeRateSource != null}"><div class="k">Kur Kaynağı</div>
+                <div class="v" th:text="${order.paymentExchangeRateSource}
+                        + (${order.paymentExchangeRateMarginPercent} != null ? ' (margin %' + ${order.paymentExchangeRateMarginPercent} + ')' : '')">—</div></div>
+            <div class="info-row" th:if="${order.paymentExchangeRateFetchedAt != null}"><div class="k">Kur Zamanı</div>
+                <div class="v" th:text="${#temporals.format(order.paymentExchangeRateFetchedAt,'dd.MM.yyyy HH:mm')}">—</div></div>
             <div class="info-row"><div class="k">Ad Soyad</div>
                 <div class="v" th:text="${order.customerName} ?: '—'">—</div></div>
             <div class="info-row"><div class="k">E-posta</div>
@@ -110,6 +151,33 @@
                   th:text="(${order.preInfoAccepted} ? '✓ ' : '✕ ') + 'Ön Bilgilendirme'">Ön Bilgilendirme</span>
             <span class="flag" th:classappend="${order.distanceSalesAccepted} ? 'ok' : 'no'"
                   th:text="(${order.distanceSalesAccepted} ? '✓ ' : '✕ ') + 'Mesafeli Satış'">Mesafeli Satış</span>
+        </div>
+    </div>
+
+    <!-- Kargo Snapshot (AŞAMA 7A) — Order'a sipariş anında yazılmış SNAPSHOT gösterilir;
+         burada KESİNLİKLE hesaplama yapılmaz (ShippingService/ShippingCostService çağrılmaz).
+         Eski siparişlerde (tüm alanlar null) bu panel hiç gösterilmez. -->
+    <div class="panel"
+         th:if="${order.shippingWeight != null or order.shippingCost != null or order.shippingCategory != null or (order.shippingMessage != null and !order.shippingMessage.isBlank())}">
+        <div class="section-label">Kargo Snapshot</div>
+        <p style="margin:0 0 14px; font-size:.8rem; color:var(--muted); line-height:1.5;">
+            Bu bilgiler sipariş oluşturulduğu anda hesaplanan kargo bilgileridir.
+        </p>
+        <div class="info-grid">
+            <div class="info-row"><div class="k">Ağırlık</div>
+                <div class="v" th:text="${order.shippingWeight != null} ? (${#numbers.formatDecimal(order.shippingWeight,1,'POINT',2,'COMMA')} + ' kg') : '-'">—</div></div>
+            <div class="info-row"><div class="k">Kategori</div>
+                <div class="v" th:switch="${order.shippingCategory}">
+                    <span th:case="'STANDARD'">Standart Kargo (STANDARD)</span>
+                    <span th:case="'HEAVY_CARGO'">Ağır Kargo (HEAVY_CARGO)</span>
+                    <span th:case="'MANUAL_REVIEW'">Manuel İnceleme Gerekli (MANUAL_REVIEW)</span>
+                    <span th:case="*" th:text="${order.shippingCategory} ?: '-'">—</span>
+                </div>
+            </div>
+            <div class="info-row"><div class="k">Kargo Ücreti</div>
+                <div class="v" th:text="${order.shippingCost != null} ? (${#numbers.formatDecimal(order.shippingCost,1,'POINT',2,'COMMA')} + ' TL') : '-'">—</div></div>
+            <div class="info-row"><div class="k">Mesaj</div>
+                <div class="v" th:text="${order.shippingMessage != null and !order.shippingMessage.isBlank()} ? ${order.shippingMessage} : '-'">-</div></div>
         </div>
     </div>
 
@@ -149,6 +217,39 @@
                 <span class="amt" th:text="|${#numbers.formatDecimal(ct.value,1,'POINT',2,'COMMA')} ${ct.key.symbol}|">0,00 €</span>
             </div>
         </div>
+    </div>
+
+    <!-- Kargo Operasyonu (AŞAMA 8) — admin siparişi FİİLEN kargoya verdiğinde doldurur.
+         AŞAMA 5'teki "Kargo Snapshot" panelinden (yukarıda, tahmini ağırlık/ücret) FARKLIDIR:
+         burada gerçek kargo firması/takip numarası/gönderim zamanı kaydedilir. Mail
+         entegrasyonu bilinçli olarak YOK (bkz. OrderService.markOrderAsShipped); ödeme
+         akışına (PaymentService/IyzicoClient) hiç dokunmaz. -->
+    <div class="panel">
+        <div class="section-label">Kargo Operasyonu</div>
+        <form th:action="@{'/admin/orders/' + ${order.id} + '/ship'}" method="post"
+              style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;">
+            <div>
+                <label class="field-label" for="shippingCompany">Kargo Firması</label>
+                <input type="text" id="shippingCompany" class="form-control" name="shippingCompany"
+                       th:value="${order.shippingCompany}" placeholder="Örn: Yurtiçi Kargo" style="min-width:200px;" />
+            </div>
+            <div>
+                <label class="field-label" for="shippingTrackingNumber">Takip Numarası</label>
+                <input type="text" id="shippingTrackingNumber" class="form-control" name="shippingTrackingNumber"
+                       th:value="${order.shippingTrackingNumber}" placeholder="Örn: 123456789" style="min-width:200px;" />
+            </div>
+            <div>
+                <label class="field-label">Gönderim Tarihi</label>
+                <input type="text" class="form-control" readonly style="min-width:220px; opacity:.7; cursor:not-allowed;"
+                       th:value="${order.shippedAt != null} ? ${#temporals.format(order.shippedAt,'dd.MM.yyyy HH:mm')} : 'Kargoya verildiğinde otomatik doldurulur'" />
+            </div>
+            <button type="submit" class="btn-gold"><i class="bi bi-truck"></i> Kargoya Ver</button>
+        </form>
+        <p th:if="${order.shippedAt != null}" style="margin:12px 0 0; font-size:.78rem; color:var(--muted);">
+            Bu sipariş <strong th:text="${#temporals.format(order.shippedAt,'dd.MM.yyyy HH:mm')}">—</strong> tarihinde
+            kargoya verildi olarak işaretlendi. Bilgileri düzeltip tekrar "Kargoya Ver" ile güncelleyebilirsiniz
+            (gönderim tarihi güncel zamanla yenilenir).
+        </p>
     </div>
 
     <!-- Durum güncelleme -->

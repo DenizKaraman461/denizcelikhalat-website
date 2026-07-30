@@ -103,7 +103,27 @@
 <body>
 
 <!-- ===== ORTAK NAVBAR ===== -->
-<header th:replace="~{fragments/navbar :: navbar('products')}"></header>
+<nav class="navbar navbar-expand-lg fixed-top site-nav">
+    <div class="container">
+        <a class="navbar-brand" href="/"><img src="/uploads/deniz-logo.png" alt="Deniz Çelik Halat" class="brand-logo" /></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Menüyü aç/kapat">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav mx-lg-auto mb-2 mb-lg-0 main-links">
+                <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house-fill"></i> Anasayfa</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/products"><i class="bi bi-grid-3x3-gap-fill"></i> Ürünler</a></li>
+                <li class="nav-item"><a class="nav-link" href="/cart"><i class="bi bi-cart-fill"></i> Sepetim</a></li>
+                <li class="nav-item"><a class="nav-link" href="/#markalarimiz-hakkimizda"><i class="bi bi-info-circle-fill"></i> Hakkımızda</a></li>
+            </ul>
+            <div class="nav-auth">
+                <a href="/login" class="btn-nav-ghost"><i class="bi bi-box-arrow-in-right"></i> Giriş Yap</a>
+                <a href="/register" class="btn-nav-gold"><i class="bi bi-person-plus-fill"></i> Kayıt Ol</a>
+                <a href="/login" class="nav-shield" title="Admin Girişi"><i class="bi bi-shield-lock"></i></a>
+            </div>
+        </div>
+    </div>
+</nav>
 
 <div class="shell">
     <div class="form-panel frame">
@@ -165,6 +185,16 @@
                           placeholder="1 metre | 100&#10;5 metre | 450&#10;10 metre | 850"></textarea>
                 <small style="display:block; margin-top:8px; color:#9a9a9a; font-size:.8rem;">
                     Hazır ölçü seçeneklerini her satıra "seçenek | fiyat" şeklinde yazın. Örn: 5 metre | 450<br>Seçenek + miktar modunda her satır <b>birim fiyat</b> olarak kullanılır. Örn: <code>8 mm K.Öz | 120</code>. Müşteri ayrıca metre/miktar girer.
+                </small>
+            </div>
+
+            <!-- ===== Kargo (AŞAMA 1: yalnızca veri girişi — kargo hesaplaması sonraki aşamada yapılacak) ===== -->
+            <div class="mb-3">
+                <label for="shippingWeightPerMeter" class="form-label">Kargo Ağırlığı (kg/metre)</label>
+                <input type="number" step="0.0001" min="0.0001" class="form-control" id="shippingWeightPerMeter"
+                       th:field="*{shippingWeightPerMeter}" placeholder="Örn: 0.1400" />
+                <small style="display:block; margin-top:8px; color:#9a9a9a; font-size:.8rem;">
+                    1 metre ürünün kilogram ağırlığı. Kargo hesaplamasında kullanılacaktır.
                 </small>
             </div>
 

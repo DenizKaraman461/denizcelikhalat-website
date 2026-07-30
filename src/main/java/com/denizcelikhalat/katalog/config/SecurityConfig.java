@@ -38,11 +38,18 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authenticationProvider(authenticationProvider())
-                // CSRF AÇIK bırakıldı (devre dışı bırakılmıyor). Thymeleaf formlarına token
-                // otomatik eklenir; AJAX istekleri token'ı meta etiketinden header ile gönderir.
+                // CSRF genel olarak AÇIK bırakıldı (devre dışı bırakılmıyor). Thymeleaf formlarına
+                // token otomatik eklenir; AJAX istekleri token'ı meta etiketinden header ile gönderir.
+                // TEK istisna: /payment/callback -> ödeme sağlayıcısının (iyzico) sunucudan sunucuya
+                // POST ettiği webhook; bizim CSRF token'ımızı taşıyamaz. Sonuç yine de
+                // PaymentService.handleCallback içinde token bazlı sunucu-taraflı doğrulamadan geçer,
+                // dolayısıyla bu tek yol için CSRF muafiyeti güvenlik açığı YARATMAZ.
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/payment/callback"))
                 .authorizeHttpRequests(auth -> auth
                         // --- Login/Logout uç noktaları admin kuralından ÖNCE serbest olmalı ---
                         .requestMatchers("/login", "/admin/login", "/register").permitAll()
+                        // Şifremi Unuttum / Şifre Sıfırlama: giriş yapmamış kullanıcı için, herkese açık.
+                        .requestMatchers("/forgot-password", "/reset-password").permitAll()
                         // Çıkış yolu (şablonlardaki th:action="@{/logout}" ile uyumlu) serbest.
                         .requestMatchers("/logout").permitAll()
 
@@ -51,16 +58,25 @@ public class SecurityConfig {
                         .requestMatchers("/add", "/edit/**", "/delete/**").hasRole("ADMIN")
 
                         // --- Sadece giriş yapmış kullanıcılar ---
-                        .requestMatchers("/cart/**", "/checkout/**", "/orders/**").authenticated()
+                        .requestMatchers("/cart/**", "/checkout/**", "/orders/**", "/my-quotes").authenticated()
 
                         // --- Teklif talebi oluşturma herkese açık (admin listesi /admin/** altında ADMIN ister) ---
                         .requestMatchers("/quote/create").permitAll()
+
+                        // --- Ödeme sağlayıcısının (iyzico/PayTR) callback/webhook uç noktası herkese açık
+                        //     olmalı: dış sistemden gelir, oturum/cookie taşımaz. CSRF'ten de ayrıca
+                        //     muaf tutulur (aşağıdaki .csrf(...) bloğuna bakın). /payment/success/**
+                        //     ve /payment/failure/** BİLEREK burada YOK -> anyRequest().authenticated()
+                        //     ile korunuyorlar, sahiplik kontrolü PaymentController içinde yapılır. ---
+                        .requestMatchers("/payment/callback").permitAll()
 
                         // --- Herkese açık sayfalar ve statik kaynaklar ---
                         .requestMatchers(
                                 "/", "/products", "/products/**", "/category/**",
                                 "/uploads/**", "/css/**", "/js/**", "/images/**",
-                                "/webjars/**", "/favicon.ico", "/error"
+                                "/webjars/**", "/favicon.ico", "/error",
+                                // Yasal/güven sayfaları (iyzico Sanal POS başvurusu için)
+                                "/mesafeli-satis-sozlesmesi", "/teslimat-ve-iade", "/gizlilik-politikasi"
                         ).permitAll()
 
                         // --- Üretim güvenliği: yukarıda eşleşmeyen HER ŞEY giriş ister (default-deny) ---

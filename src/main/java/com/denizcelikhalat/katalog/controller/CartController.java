@@ -2,6 +2,8 @@ package com.denizcelikhalat.katalog.controller;
 
 import com.denizcelikhalat.katalog.model.Cart;
 import com.denizcelikhalat.katalog.service.CartService;
+import com.denizcelikhalat.katalog.service.ShippingCostService;
+import com.denizcelikhalat.katalog.service.ShippingService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,16 +21,28 @@ import java.security.Principal;
 public class CartController {
 
     private final CartService cartService;
+    private final ShippingService shippingService;
+    private final ShippingCostService shippingCostService;
 
-    public CartController(CartService cartService) {
+    public CartController(CartService cartService, ShippingService shippingService,
+                          ShippingCostService shippingCostService) {
         this.cartService = cartService;
+        this.shippingService = shippingService;
+        this.shippingCostService = shippingCostService;
     }
 
     // Sepeti görüntüle. Principal.getName() = giriş yapan kullanıcının e-postası.
+    // AŞAMA 3A/4B: sepet ağırlığı + tahmini kargo ücreti (yalnızca GÖRÜNTÜLEME;
+    // Order/ödeme/checkout akışı etkilenmez).
     @GetMapping
     public String viewCart(Principal principal, Model model) {
         Cart cart = cartService.getCartByEmail(principal.getName());
         model.addAttribute("cart", cart);
+
+        var shippingCalculation = shippingService.calculateCartWeight(cart);
+        model.addAttribute("shippingCalculation", shippingCalculation);
+        model.addAttribute("shippingCostResult", shippingCostService.calculateShippingCost(shippingCalculation));
+
         return "cart"; // cart.html
     }
 

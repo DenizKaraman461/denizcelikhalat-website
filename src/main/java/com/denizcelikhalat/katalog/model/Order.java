@@ -59,6 +59,84 @@ public class Order {
     @Column(nullable = false, length = 3)
     private PriceCurrency currency = PriceCurrency.USD;
 
+    // ===== Ödeme (PayTR / iyzico) alanları =====
+    // Ödeme durumu order.status'tan (fulfillment) BAĞIMSIZDIR. Sipariş yalnızca
+    // paymentStatus = PAID olduğunda ödemesi tamamlanmış sayılır.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false, length = 20)
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
+
+    // Kullanılan sağlayıcı, örn. "IYZICO" veya "PAYTR".
+    @Column(name = "payment_provider", length = 30)
+    private String paymentProvider;
+
+    // Bizim ürettiğimiz, sağlayıcıya gönderilen referans (conversationId / merchant_oid).
+    @Column(name = "payment_conversation_id", length = 100)
+    private String paymentConversationId;
+
+    // Sağlayıcının verdiği ödeme formu/token (iyzico checkout form token, PayTR token vb.)
+    // NOT: Bu alanda ASLA kart numarası/CVV gibi kart bilgisi tutulmaz; kart bilgisi hiçbir
+    // zaman bizim sunucumuza uğramaz, doğrudan sağlayıcının barındırdığı sayfada girilir.
+    @Column(name = "payment_token", length = 200)
+    private String paymentToken;
+
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
+
+    // iyzico'ya GERÇEKTEN gönderilen tahsilat tutarı/para birimi (her zaman TRY'ye çevrilir).
+    // Ürünün/siparişin orijinal para birimi ve tutarları (currency/totalAmount/currencySnapshot)
+    // BUNDAN ETKİLENMEZ; bu alanlar yalnızca "kartla ne kadar tahsil edildi" bilgisini saklar.
+    @Column(name = "payment_amount", precision = 19, scale = 2)
+    private BigDecimal paymentAmount;
+
+    @Column(name = "payment_currency", length = 10)
+    private String paymentCurrency;
+
+    // Ödeme anında kullanılan döviz kurunun kaynağı ("TCMB", "FALLBACK" vb.) ve ne zaman
+    // çekildiği + uygulanan margin yüzdesi — yalnızca bilgi/denetim amaçlı (admin görünümü).
+    @Column(name = "payment_exchange_rate_source", length = 30)
+    private String paymentExchangeRateSource;
+
+    @Column(name = "payment_exchange_rate_fetched_at")
+    private LocalDateTime paymentExchangeRateFetchedAt;
+
+    @Column(name = "payment_exchange_rate_margin_percent", precision = 6, scale = 2)
+    private BigDecimal paymentExchangeRateMarginPercent;
+
+    // ===== AŞAMA 5: Kargo SNAPSHOT'ı =====
+    // Sipariş oluşturulduğu ANDA hesaplanıp buraya yazılır (bkz. OrderService.placeOrder).
+    // Sonrasında BİR DAHA hesaplanmaz — sipariş her görüntülendiğinde ShippingService/
+    // ShippingCostService TEKRAR çağrılmaz; burada saklanan değer kullanılır. Böylece ürün
+    // fiyatı/ağırlığı veya kargo tarifeleri sonradan değişse bile bu siparişin kargo bilgisi
+    // sipariş anındaki haliyle sabit kalır. Hepsi NULL olabilir (kargo hesaplanamadıysa /
+    // manuel inceleme gerekiyorsa sipariş yine de oluşur, sadece bu alanlar boş kalır).
+    @Column(name = "shipping_weight", precision = 10, scale = 2)
+    private BigDecimal shippingWeight;
+
+    @Column(name = "shipping_cost", precision = 10, scale = 2)
+    private BigDecimal shippingCost;
+
+    @Column(name = "shipping_category", length = 50)
+    private String shippingCategory;
+
+    @Column(name = "shipping_message", length = 255)
+    private String shippingMessage;
+
+    // ===== AŞAMA 8: Kargo OPERASYON bilgileri =====
+    // AŞAMA 5'teki shipping snapshot alanlarından (shippingWeight/shippingCost/shippingCategory/
+    // shippingMessage — sipariş anında hesaplanan TAHMİNİ kargo bilgisi) FARKLI bir amaca hizmet
+    // eder: bu alanlar admin'in siparişi FİİLEN kargoya verdiğinde girdiği OPERASYONEL bilgilerdir
+    // (hangi kargo firması, takip numarası, ne zaman kargoya verildi). Hepsi nullable — sipariş
+    // henüz kargoya verilmemişse veya eski bir siparişse boş kalır.
+    @Column(name = "shipping_company", length = 120)
+    private String shippingCompany;
+
+    @Column(name = "shipping_tracking_number", length = 100)
+    private String shippingTrackingNumber;
+
+    @Column(name = "shipped_at")
+    private LocalDateTime shippedAt;
+
     // Sipariş silinince kalemleri de silinir.
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItem> items = new ArrayList<>();
@@ -208,6 +286,142 @@ public class Order {
 
     public void setCurrency(PriceCurrency currency) {
         this.currency = currency;
+    }
+
+    public PaymentStatus getPaymentStatus() {
+        return paymentStatus;
+    }
+
+    public void setPaymentStatus(PaymentStatus paymentStatus) {
+        this.paymentStatus = paymentStatus;
+    }
+
+    public String getPaymentProvider() {
+        return paymentProvider;
+    }
+
+    public void setPaymentProvider(String paymentProvider) {
+        this.paymentProvider = paymentProvider;
+    }
+
+    public String getPaymentConversationId() {
+        return paymentConversationId;
+    }
+
+    public void setPaymentConversationId(String paymentConversationId) {
+        this.paymentConversationId = paymentConversationId;
+    }
+
+    public String getPaymentToken() {
+        return paymentToken;
+    }
+
+    public void setPaymentToken(String paymentToken) {
+        this.paymentToken = paymentToken;
+    }
+
+    public LocalDateTime getPaidAt() {
+        return paidAt;
+    }
+
+    public void setPaidAt(LocalDateTime paidAt) {
+        this.paidAt = paidAt;
+    }
+
+    public BigDecimal getPaymentAmount() {
+        return paymentAmount;
+    }
+
+    public void setPaymentAmount(BigDecimal paymentAmount) {
+        this.paymentAmount = paymentAmount;
+    }
+
+    public String getPaymentCurrency() {
+        return paymentCurrency;
+    }
+
+    public void setPaymentCurrency(String paymentCurrency) {
+        this.paymentCurrency = paymentCurrency;
+    }
+
+    public String getPaymentExchangeRateSource() {
+        return paymentExchangeRateSource;
+    }
+
+    public void setPaymentExchangeRateSource(String paymentExchangeRateSource) {
+        this.paymentExchangeRateSource = paymentExchangeRateSource;
+    }
+
+    public LocalDateTime getPaymentExchangeRateFetchedAt() {
+        return paymentExchangeRateFetchedAt;
+    }
+
+    public void setPaymentExchangeRateFetchedAt(LocalDateTime paymentExchangeRateFetchedAt) {
+        this.paymentExchangeRateFetchedAt = paymentExchangeRateFetchedAt;
+    }
+
+    public BigDecimal getPaymentExchangeRateMarginPercent() {
+        return paymentExchangeRateMarginPercent;
+    }
+
+    public void setPaymentExchangeRateMarginPercent(BigDecimal paymentExchangeRateMarginPercent) {
+        this.paymentExchangeRateMarginPercent = paymentExchangeRateMarginPercent;
+    }
+
+    public BigDecimal getShippingWeight() {
+        return shippingWeight;
+    }
+
+    public void setShippingWeight(BigDecimal shippingWeight) {
+        this.shippingWeight = shippingWeight;
+    }
+
+    public BigDecimal getShippingCost() {
+        return shippingCost;
+    }
+
+    public void setShippingCost(BigDecimal shippingCost) {
+        this.shippingCost = shippingCost;
+    }
+
+    public String getShippingCategory() {
+        return shippingCategory;
+    }
+
+    public void setShippingCategory(String shippingCategory) {
+        this.shippingCategory = shippingCategory;
+    }
+
+    public String getShippingMessage() {
+        return shippingMessage;
+    }
+
+    public void setShippingMessage(String shippingMessage) {
+        this.shippingMessage = shippingMessage;
+    }
+
+    public String getShippingCompany() {
+        return shippingCompany;
+    }
+
+    public void setShippingCompany(String shippingCompany) {
+        this.shippingCompany = shippingCompany;
+    }
+
+    public String getShippingTrackingNumber() {
+        return shippingTrackingNumber;
+    }
+
+    public void setShippingTrackingNumber(String shippingTrackingNumber) {
+        this.shippingTrackingNumber = shippingTrackingNumber;
+    }
+
+    public LocalDateTime getShippedAt() {
+        return shippedAt;
+    }
+
+    public void setShippedAt(LocalDateTime shippedAt) {
+        this.shippedAt = shippedAt;
     }
 
     public List<OrderItem> getItems() {

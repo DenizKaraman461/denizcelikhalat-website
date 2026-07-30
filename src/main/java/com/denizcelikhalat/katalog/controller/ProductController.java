@@ -6,6 +6,7 @@ import com.denizcelikhalat.katalog.model.Product;
 import com.denizcelikhalat.katalog.service.CategoryService;
 import com.denizcelikhalat.katalog.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.propertyeditors.CustomNumberEditor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -13,11 +14,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,6 +34,16 @@ public class ProductController {
     public ProductController(ProductService productService, CategoryService categoryService) {
         this.productService = productService;
         this.categoryService = categoryService;
+    }
+
+    // Kargo Ağırlığı (kg/metre) alanı formda boş bırakılabilir; boş string geldiğinde
+    // BigDecimal'a çevirmeye çalışıp hata vermek yerine null olarak bağlanır.
+    // YALNIZCA bu alana özeldir; diğer sayısal alanların (price vb.) bağlanma davranışı
+    // DEĞİŞMEZ (onlar zaten formda "required" ve her zaman doludur).
+    @InitBinder
+    public void initBinder(WebDataBinder binder) {
+        binder.registerCustomEditor(BigDecimal.class, "shippingWeightPerMeter",
+                new CustomNumberEditor(BigDecimal.class, true));
     }
 
     @GetMapping("/products")

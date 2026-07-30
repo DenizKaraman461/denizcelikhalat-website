@@ -119,7 +119,11 @@
 
         /* Footer */
         .site-footer{border-top:1px solid var(--line); background:rgba(0,0,0,.6); backdrop-filter:blur(8px); padding:46px 0 0}
-        .footer-inner{display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:30px}
+        .footer-inner{display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr; gap:26px}
+        .footer-payments{margin-top:30px; padding-top:20px; border-top:1px dashed var(--line); display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap}
+        .pay-label{font-family:var(--f-mono); font-size:.7rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-right:4px}
+        .pay-chip{display:inline-flex; align-items:center; gap:7px; padding:7px 14px; border-radius:9px; border:1px solid var(--line); background:rgba(255,215,0,.05); color:#e6e6e6; font-family:var(--f-mono); font-size:.78rem; font-weight:600}
+        .pay-chip i{color:var(--gold); font-size:1rem}
         .f-logo{height:54px; margin-bottom:12px; filter:drop-shadow(0 0 8px rgba(255,215,0,.25))}
         .site-footer p{color:var(--muted); font-size:.9rem; line-height:1.6; margin:0}
         .f-col h4{font-family:var(--f-display); text-transform:uppercase; letter-spacing:.06em; color:var(--gold); font-size:1.05rem; margin:0 0 14px}
@@ -130,12 +134,49 @@
 
         a:focus-visible,button:focus-visible{outline:2px solid var(--gold); outline-offset:3px}
         @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+        .footer-payment-logo-band {
+    max-width: 520px;
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
+}
     </style>
 </head>
 <body>
 
 <!-- ===== ORTAK NAVBAR ===== -->
-<header th:replace="~{fragments/navbar :: navbar('products')}"></header>
+<nav class="navbar navbar-expand-lg fixed-top site-nav">
+    <div class="container">
+        <a class="navbar-brand" href="/"><img src="/uploads/deniz-logo.png" alt="Deniz Çelik Halat" class="brand-logo" /></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Menüyü aç/kapat">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav mx-lg-auto mb-2 mb-lg-0 main-links">
+                <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house-fill"></i> Anasayfa</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/products"><i class="bi bi-grid-3x3-gap-fill"></i> Ürünler</a></li>
+                <li class="nav-item"><a class="nav-link" href="/cart"><i class="bi bi-cart-fill"></i> Sepetim</a></li>
+                <li class="nav-item"><a class="nav-link" href="/#markalarimiz-hakkimizda"><i class="bi bi-info-circle-fill"></i> Hakkımızda</a></li>
+            </ul>
+            <div class="nav-auth">
+                <a sec:authorize="hasRole('ADMIN')" href="/admin/orders" class="btn-nav-ghost"><i class="bi bi-clipboard-data"></i> Verilen Siparişler</a>
+                <!-- Giriş YAPILMADIYSA: Giriş Yap + Kayıt Ol -->
+                <a sec:authorize="!isAuthenticated()" href="/login" class="btn-nav-ghost"><i class="bi bi-box-arrow-in-right"></i> Giriş Yap</a>
+                <a sec:authorize="!isAuthenticated()" href="/register" class="btn-nav-gold"><i class="bi bi-person-plus-fill"></i> Kayıt Ol</a>
+
+                <!-- Giriş YAPILDIYSA: Siparişlerim + Çıkış Yap -->
+                <a sec:authorize="isAuthenticated()" href="/orders" class="btn-nav-gold"><i class="bi bi-box-seam"></i> Siparişlerim</a>
+                <a sec:authorize="isAuthenticated()" href="/my-quotes" class="btn-nav-ghost"><i class="bi bi-chat-left-text"></i> Tekliflerim</a>
+                <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" style="display:inline-flex; margin:0;">
+                    <button type="submit" class="btn-nav-ghost" style="background: transparent; cursor: pointer;"><i class="bi bi-box-arrow-right"></i> Çıkış Yap</button>
+                </form>
+
+                <a href="/login" class="nav-shield" title="Admin Girişi"><i class="bi bi-shield-lock"></i></a>
+            </div>
+        </div>
+    </div>
+</nav>
 
 <div class="shell">
 
@@ -243,6 +284,19 @@
             <a href="/cart"><i class="bi bi-cart-fill"></i> Sepetim</a>
             <a href="/#markalarimiz-hakkimizda"><i class="bi bi-info-circle-fill"></i> Hakkımızda</a>
         </div>
+        <div class="f-col">
+            <h4>Yasal</h4>
+            <a href="/mesafeli-satis-sozlesmesi"><i class="bi bi-file-earmark-text-fill"></i> Mesafeli Satış Sözleşmesi</a>
+            <a href="/teslimat-ve-iade"><i class="bi bi-truck"></i> Teslimat ve İade</a>
+            <a href="/gizlilik-politikasi"><i class="bi bi-shield-lock-fill"></i> Gizlilik Politikası</a>
+        </div>
+    </div>
+
+    <div class="footer-payments">
+        <span class="pay-label">Güvenli Ödeme</span>
+        <img src="/uploads/payment-logos.png"
+             alt="iyzico, Mastercard, Visa, American Express ve Troy ile güvenli ödeme"
+             class="footer-payment-logo-band">
     </div>
     <div class="footer-base">© 2025 Deniz Çelik Halat — Tüm hakları saklıdır.</div>
 </footer>

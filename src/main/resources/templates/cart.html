@@ -155,7 +155,37 @@
 <body>
 
 <!-- ===== ORTAK NAVBAR ===== -->
-<header th:replace="~{fragments/navbar :: navbar('cart')}"></header>
+<nav class="navbar navbar-expand-lg fixed-top site-nav">
+    <div class="container">
+        <a class="navbar-brand" href="/"><img src="/uploads/deniz-logo.png" alt="Deniz Çelik Halat" class="brand-logo" /></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Menüyü aç/kapat">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav mx-lg-auto mb-2 mb-lg-0 main-links">
+                <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house-fill"></i> Anasayfa</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/products"><i class="bi bi-grid-3x3-gap-fill"></i> Ürünler</a></li>
+                <li class="nav-item"><a class="nav-link" href="/cart"><i class="bi bi-cart-fill"></i> Sepetim</a></li>
+                <li class="nav-item"><a class="nav-link" href="/#markalarimiz-hakkimizda"><i class="bi bi-info-circle-fill"></i> Hakkımızda</a></li>
+            </ul>
+            <div class="nav-auth">
+                <a sec:authorize="hasRole('ADMIN')" href="/admin/orders" class="btn-nav-ghost"><i class="bi bi-clipboard-data"></i> Verilen Siparişler</a>
+                <!-- Giriş YAPILMADIYSA: Giriş Yap + Kayıt Ol -->
+                <a sec:authorize="!isAuthenticated()" href="/login" class="btn-nav-ghost"><i class="bi bi-box-arrow-in-right"></i> Giriş Yap</a>
+                <a sec:authorize="!isAuthenticated()" href="/register" class="btn-nav-gold"><i class="bi bi-person-plus-fill"></i> Kayıt Ol</a>
+
+                <!-- Giriş YAPILDIYSA: Siparişlerim + Çıkış Yap -->
+                <a sec:authorize="isAuthenticated()" href="/orders" class="btn-nav-gold"><i class="bi bi-box-seam"></i> Siparişlerim</a>
+                <a sec:authorize="isAuthenticated()" href="/my-quotes" class="btn-nav-ghost"><i class="bi bi-chat-left-text"></i> Tekliflerim</a>
+                <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" style="display:inline-flex; margin:0;">
+                    <button type="submit" class="btn-nav-ghost" style="background: transparent; cursor: pointer;"><i class="bi bi-box-arrow-right"></i> Çıkış Yap</button>
+                </form>
+
+                <a href="/login" class="nav-shield" title="Admin Girişi"><i class="bi bi-shield-lock"></i></a>
+            </div>
+        </div>
+    </div>
+</nav>
 
 <div class="shell">
 
@@ -232,6 +262,40 @@
             <div class="sum-row">
                 <span>Kargo</span>
                 <span class="v">Tahsil edilecek</span>
+            </div>
+
+            <!-- AŞAMA 3A: sadece görüntüleme — kargo ÜCRETİ değil, tahmini AĞIRLIK -->
+            <div class="sum-row" th:if="${shippingCalculation != null and shippingCalculation.weightCalculated}">
+                <span>Tahmini Kargo Ağırlığı</span>
+                <span class="v" th:text="${#numbers.formatDecimal(shippingCalculation.totalWeight,1,'POINT',2,'COMMA')} + ' kg'">0,00 kg</span>
+            </div>
+            <div class="sum-row" th:if="${shippingCalculation != null and shippingCalculation.requiresManualReview}">
+                <span>Kargo Ağırlığı</span>
+                <span class="v" style="color:var(--gold-2); font-size:.82rem; font-family:inherit; text-align:right; max-width:180px;">
+                    Kargo ağırlığı hesaplanamadı. Sipariş sonrası kontrol edilecektir.
+                </span>
+            </div>
+
+            <!-- AŞAMA 3B: sadece lojistik sınıflandırma bilgisi — kargo ÜCRETİ değil -->
+            <div class="sum-row" th:if="${shippingCalculation != null and shippingCalculation.category != null}">
+                <span>Kargo Tipi</span>
+                <span class="v" th:switch="${shippingCalculation.category.name()}">
+                    <span th:case="'STANDARD'" style="color:#8ff0b6;" th:text="${shippingCalculation.categoryMessage}">Standart Kargo</span>
+                    <span th:case="'HEAVY_CARGO'" style="color:#ffcf7a;" th:text="${shippingCalculation.categoryMessage}">Ağır Kargo</span>
+                    <span th:case="*" style="color:var(--gold-2);" th:text="${shippingCalculation.categoryMessage}">Manuel İnceleme Gerekli</span>
+                </span>
+            </div>
+
+            <!-- AŞAMA 4B: sadece görüntüleme — TAHMİNİ kargo ücreti (henüz siparişe/ödemeye eklenmez) -->
+            <div class="sum-row" th:if="${shippingCostResult != null and shippingCostResult.costCalculated}">
+                <span>Tahmini Kargo Ücreti</span>
+                <span class="v" th:text="${#numbers.formatDecimal(shippingCostResult.shippingCost,1,'POINT',2,'COMMA')} + ' TL'">0,00 TL</span>
+            </div>
+            <div class="sum-row" th:if="${shippingCostResult == null or !shippingCostResult.costCalculated}">
+                <span>Tahmini Kargo Ücreti</span>
+                <span class="v" style="color:var(--gold-2); font-size:.82rem; font-family:inherit; text-align:right; max-width:180px;">
+                    Kargo ücreti manuel olarak belirlenecektir.
+                </span>
             </div>
 
             <div class="divider"></div>
