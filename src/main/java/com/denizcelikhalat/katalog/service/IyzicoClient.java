@@ -38,10 +38,16 @@ import java.util.Map;
  * uç noktalarının dokümante edilmiş yapısına göre yazılmıştır (IYZWSv2 imzalama şeması).
  * iyzico API'si zaman içinde güncellenebileceğinden, canlıya almadan önce
  * https://docs.iyzico.com adresinden alan adlarını ve uç nokta yollarını doğrulayın.
- * Buyer/adres alanlarından bazıları (identityNumber, city, country vb.) iyzico tarafından
- * ZORUNLU tutulur; checkout formunuzda bu alanları toplamıyorsanız aşağıda placeholder
- * değerlerle dolduruyoruz (yalnızca SANDBOX testi için). Canlı ortamda gerçek TC Kimlik No /
- * şehir / ülke bilgisini müşteriden almanız gerekir.
+ *
+ * AŞAMA 10.1 (son revizyon): buyer.city artık sabit/sahte değer DEĞİL — Order snapshot'ından
+ * (checkout formunda toplanan gerçek müşteri şehri) okunur; eksikse ödeme güvenli şekilde
+ * reddedilir. buyer.identityNumber için TC Kimlik No KULLANICIDAN TOPLANMAZ (gereksiz kişisel
+ * veri) VE başka verilerden (telefon/e-posta/kullanıcı ID) TÜRETİLMEZ — böyle bir türetme,
+ * gerçek olmayan bir kimlik numarasını gerçekmiş gibi göstermeye çalışmak anlamına gelirdi.
+ * Bunun yerine HER SİPARİŞTE AYNI, application.properties'ten AYARLANABİLİR bir placeholder
+ * değer gönderilir (bkz. identityNumberPlaceholder alanı) — bu değerin iyzico'nun canlı onay
+ * sürecinde kabul edilip edilmeyeceği DOĞRULANMAMIŞTIR, canlıya geçmeden önce iyzico ile
+ * teyit edilmelidir.
  */
 @Service
 public class IyzicoClient {
@@ -57,6 +63,17 @@ public class IyzicoClient {
 
     @Value("${app.payment.iyzico.secret-key:}")
     private String secretKey;
+
+    // AŞAMA 10.1 (son revizyon) + configurable güncelleme: iyzico'nun buyer.identityNumber alanı
+    // ZORUNLUDUR, ancak TC Kimlik No müşteriden TOPLANMAZ (iş kararı) ve başka verilerden
+    // TÜRETİLMEZ (bkz. sınıf üstü açıklama). Bu yüzden HER SİPARİŞTE AYNI bir placeholder
+    // gönderilir — bu değer application.properties üzerinden ayarlanabilir (sandbox/
+    // production ortamlarında farklı bir değer gerekirse kod değiştirmeden değiştirilebilir).
+    // Property tanımlı değilse ":11111111111" varsayılanı kullanılır (mevcut davranışla aynı).
+    // Bu değer resmi bir TC Kimlik No DEĞİLDİR ve öyle sunulmaz; iyzico'nun bunu canlı ortamda
+    // kabul edip etmeyeceği doğrulanmamıştır — canlıya geçmeden önce iyzico ile teyit edin.
+    @Value("${app.payment.iyzico.identity-placeholder:11111111111}")
+    private String identityNumberPlaceholder;
 
     /**
      * PaymentService tarafından hesaplanmış tek bir sepet kalemi (adı + TRY tutarı).
@@ -121,6 +138,20 @@ public class IyzicoClient {
         if (charge == null || charge.totalAmount == null || charge.totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
             result.success = false;
             result.errorMessage = "Geçersiz ödeme tutarı, ödeme başlatılamadı.";
+            return result;
+        }
+        // AŞAMA 10.1 (son revizyon): iyzico'nun zorunlu tuttuğu buyer.city bilgisi Order
+        // snapshot'ından okunur (bkz. buildInitializeBody). TC Kimlik No KULLANICIDAN TOPLANMAZ
+        // (gereksiz kişisel veri) — identityNumber alanı için ayarlanabilir bir placeholder
+        // gönderilir (aşağıda identityNumberPlaceholder), bu yüzden identityNumber bu gate'e dahil
+        // DEĞİLDİR (her zaman doludur, kontrol gerektirmez).
+        // city eksikse (örn. bu alan eklenmeden önce oluşturulmuş eski bir sipariş) ödeme
+        // güvenli şekilde reddedilir; mevcut hata akışı üzerinden (PaymentService/
+        // PaymentController değişmeden) zaten doğru şekilde /payment/failure'a yönlendirir.
+        if (order == null || order.getCustomerCity() == null || order.getCustomerCity().isBlank()) {
+            result.success = false;
+            result.errorMessage = "Müşteri şehir bilgisi eksik olduğu için ödeme başlatılamıyor. "
+                    + "Lütfen bizimle iletişime geçin.";
             return result;
         }
 
@@ -208,9 +239,9 @@ public class IyzicoClient {
         body.put("enabledInstallments", List.of(1));
 
         // ---- Alıcı bilgisi ----
-        // NOT: identityNumber/city/country gibi alanlar checkout formumuzda TOPLANMIYOR.
-        // Sandbox testi için iyzico'nun test TC kimlik no'su kullanılır. Canlıya geçmeden
-        // önce bu alanları gerçek müşteri verisiyle doldurun (KVKK/hukuki uyumluluk için).
+        // city: checkout formunda toplanır (Order.customerCity snapshot'ı, yukarıdaki gate
+        // ile eksikse zaten ödeme başlatılmaz). identityNumber: TOPLANMAZ, application.
+        // properties'ten ayarlanabilir identityNumberPlaceholder gönderilir (bkz. alan tanımı).
         String fullName = (order.getCustomerName() != null && !order.getCustomerName().isBlank())
                 ? order.getCustomerName() : "Musteri Musteri";
         String[] nameParts = fullName.trim().split("\\s+", 2);
@@ -223,17 +254,30 @@ public class IyzicoClient {
         buyer.put("surname", lastName);
         buyer.put("gsmNumber", order.getCustomerPhone() != null ? order.getCustomerPhone() : "+905000000000");
         buyer.put("email", order.getCustomerEmail() != null ? order.getCustomerEmail() : "musteri@denizcelikhalat.com");
-        buyer.put("identityNumber", "11111111111"); // TODO: gerçek TC kimlik no (canlı ortam)
+        // AŞAMA 10.1 (son revizyon): TC Kimlik No müşteriden TOPLANMAZ (iş kararı) ve başka
+        // verilerden (telefon/e-posta/kullanıcı ID) TÜRETİLMEZ. iyzico'nun Checkout Form
+        // Initialize isteği buyer.identityNumber alanını yine de ZORUNLU tuttuğundan, HER
+        // SİPARİŞTE BİREBİR AYNI, application.properties'ten ayarlanabilir bir placeholder
+        // değer gönderilir (identityNumberPlaceholder, bkz. yukarıdaki alan tanımı).
+        // DÜRÜST UYARI: Bu değerin iyzico'nun canlı/production hesap onay sürecinde kabul
+        // edilip edilmeyeceği DOĞRULANMAMIŞTIR — canlıya geçmeden önce iyzico entegrasyon
+        // desteğiyle bu alanın gerçekten zorunlu olup olmadığı, ya da bu şekilde ayarlanabilir
+        // bir placeholder değerle gönderilmesinin kabul edilip edilmeyeceği MUTLAKA teyit edilmelidir.
+        buyer.put("identityNumber", identityNumberPlaceholder);
         buyer.put("registrationAddress", order.getDeliveryAddress() != null ? order.getDeliveryAddress() : "-");
         buyer.put("ip", (buyerIp != null && !buyerIp.isBlank()) ? buyerIp : "127.0.0.1");
-        buyer.put("city", "Izmir");       // TODO: gerçek şehir (canlı ortam)
-        buyer.put("country", "Turkey");
+        buyer.put("city", order.getCustomerCity());
+        // Ülke bilgisi form alanı DEĞİLDİR (şirket yalnızca Türkiye içine gönderim yapar);
+        // Order.customerCountry normalde her zaman "Turkey" olarak doldurulur (placeOrder),
+        // yine de null gelirse (çok eski sipariş) güvenli/doğru varsayılan olarak "Turkey" kullanılır
+        // — bu, kimlik/konum verisi UYDURMAK değildir, şirketin gerçek operasyon coğrafyasıdır.
+        buyer.put("country", order.getCustomerCountry() != null ? order.getCustomerCountry() : "Turkey");
         body.put("buyer", buyer);
 
         Map<String, Object> address = new LinkedHashMap<>();
         address.put("contactName", fullName);
-        address.put("city", "Izmir");     // TODO: gerçek şehir (canlı ortam)
-        address.put("country", "Turkey");
+        address.put("city", order.getCustomerCity());
+        address.put("country", order.getCustomerCountry() != null ? order.getCustomerCountry() : "Turkey");
         address.put("address", order.getDeliveryAddress() != null ? order.getDeliveryAddress() : "-");
         body.put("shippingAddress", address);
         body.put("billingAddress", address);

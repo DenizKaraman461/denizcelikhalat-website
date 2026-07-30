@@ -3,11 +3,17 @@ package com.denizcelikhalat.katalog.model;
 /**
  * Checkout (ödeme/sipariş onayı) formu için basit DTO. Entity değildir, DB'ye yazılmaz.
  * customerEmail formda yok; giriş yapan kullanıcıdan alınır.
+ *
+ * AŞAMA 10.1 (revize): customerCity eklendi — iyzico'nun Checkout Form Initialize isteğinde
+ * zorunlu tuttuğu buyer.city alanı için gerçek müşteri verisi toplanır. TC Kimlik No
+ * KULLANICIDAN TOPLANMAZ (gereksiz kişisel veri) — bkz. IyzicoClient.java: identityNumber
+ * artık mevcut müşteri verilerinden (telefon vb.) türetiliyor, ayrı bir form alanı yok.
  */
 public class CheckoutForm {
 
     private String customerName;
     private String customerPhone;
+    private String customerCity;
     private String deliveryAddress;
     private String customerNote;
     private boolean preInfoAccepted;
@@ -30,6 +36,14 @@ public class CheckoutForm {
 
     public void setCustomerPhone(String customerPhone) {
         this.customerPhone = customerPhone;
+    }
+
+    public String getCustomerCity() {
+        return customerCity;
+    }
+
+    public void setCustomerCity(String customerCity) {
+        this.customerCity = customerCity;
     }
 
     public String getDeliveryAddress() {

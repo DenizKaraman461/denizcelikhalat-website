@@ -94,6 +94,13 @@ public class OrderService {
         order.setPreInfoAccepted(form.isPreInfoAccepted());
         order.setDistanceSalesAccepted(form.isDistanceSalesAccepted());
 
+        // AŞAMA 10.1 (revize): iyzico buyer bilgisi için müşteri şehir SNAPSHOT'ı. TC Kimlik No
+        // toplanmıyor/kaydedilmiyor — bkz. IyzicoClient.buildInitializeBody (identityNumber
+        // mevcut müşteri verilerinden türetilir, ayrı bir snapshot alanı gerekmez).
+        order.setCustomerCity(form.getCustomerCity());
+        // Şirket yalnızca Türkiye içine gönderim yapıyor -> sabit iş kararı (form alanı yok).
+        order.setCustomerCountry("Turkey");
+
         // ===== Karışık para birimine izin verilir: toplamlar para birimine göre gruplanır (dönüşüm YOK) =====
         Map<PriceCurrency, BigDecimal> totalsByCurrency = new LinkedHashMap<>();
 

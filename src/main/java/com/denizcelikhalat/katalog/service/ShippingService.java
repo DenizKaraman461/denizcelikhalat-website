@@ -19,7 +19,8 @@ import java.util.List;
  * Bu serviste/kapsamda KESİNLİKLE YOK: kargo ÜCRETİ hesaplama, checkout/Order/iyzico/mail
  * entegrasyonu. Bunlar sonraki bir aşamada, bu servisin sonucunu KULLANARAK eklenecektir.
  *
- * Ağırlık formülü (kalem başına): product.shippingWeightPerMeter * cartItem.measurementAmount.
+ * Ağırlık formülü (kalem başına): product.shippingWeightPerMeter * cartItem.measurementAmount * cartItem.quantity.
+ * (quantity null ise 1 kabul edilir.)
  *
  * MeasurementMode uyumu: measurementAmount, CartItem'da yalnızca METRE bazlı satılan
  * ürünlerde (CUSTOM / PRESET_AMOUNT modları — bkz. CartService) dolu olur; NONE/PRESET
@@ -86,8 +87,17 @@ public class ShippingService {
     }
 
     /**
-     * Tek bir sepet kaleminin ağırlığını hesaplar. Hesaplanamıyorsa (ürün, shippingWeightPerMeter
-     * veya metre miktarı eksikse) null döner; exception FIRLATMAZ.
+     * Tek bir sepet kaleminin ağırlığını hesaplar: weightPerMeter x measurementAmount x quantity.
+     * Hesaplanamıyorsa (ürün, shippingWeightPerMeter veya metre miktarı eksikse) null döner;
+     * exception FIRLATMAZ.
+     *
+     * DÜZELTME: CUSTOM/PRESET_AMOUNT modlarında aynı ürün + aynı ölçü tekrar sepete eklenirse
+     * CartService measurementAmount'ı DEĞİL, quantity'yi artırır (örn. "100 metre" iki kez
+     * eklenirse: measurementAmount=100, quantity=2 -> gerçekte 200 metre). Bu yüzden ağırlık
+     * hesabına quantity çarpanı DAHİL edilmelidir; aksi halde ağırlık (ve dolayısıyla kargo
+     * ücreti) olduğundan düşük hesaplanır. quantity null ise 1 kabul edilir (NONE/PRESET
+     * modlarında zaten measurementAmount null olduğundan bu kalemler için davranış değişmez —
+     * hâlâ "hesaplanamadı/manuel inceleme" olarak işaretlenirler, quantity hiç devreye girmez).
      */
     private BigDecimal calculateItemWeight(CartItem item) {
         Product product = item.getProduct();
@@ -105,7 +115,11 @@ public class ShippingService {
             return null;
         }
 
-        return weightPerMeter.multiply(amount);
+        BigDecimal quantity = (item.getQuantity() != null)
+                ? BigDecimal.valueOf(item.getQuantity())
+                : BigDecimal.ONE;
+
+        return weightPerMeter.multiply(amount).multiply(quantity);
     }
 
     /**

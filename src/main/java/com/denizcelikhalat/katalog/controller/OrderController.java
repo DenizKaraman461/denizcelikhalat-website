@@ -95,6 +95,8 @@ public class OrderController {
         List<String> errors = new ArrayList<>();
         if (!StringUtils.hasText(form.getCustomerName())) errors.add("Ad Soyad zorunludur.");
         if (!StringUtils.hasText(form.getCustomerPhone())) errors.add("Telefon zorunludur.");
+        // AŞAMA 10.1: iyzico'nun zorunlu tuttuğu buyer.city alanı için (TC Kimlik No YOK - toplanmıyor).
+        if (!StringUtils.hasText(form.getCustomerCity())) errors.add("Şehir zorunludur.");
         if (!StringUtils.hasText(form.getDeliveryAddress())) errors.add("Teslimat adresi zorunludur.");
         if (!form.isPreInfoAccepted()) errors.add("Ön bilgilendirme formunu kabul etmelisiniz.");
         if (!form.isDistanceSalesAccepted()) errors.add("Mesafeli satış sözleşmesini kabul etmelisiniz.");

@@ -48,6 +48,19 @@ public class Order {
     @Column(name = "customer_note", columnDefinition = "TEXT")
     private String customerNote;
 
+    // ===== AŞAMA 10.1 (revize): iyzico buyer bilgisi için müşteri şehir SNAPSHOT'ı =====
+    // Checkout formunda girilir, sipariş oluşturulduğu anda (diğer checkout snapshot'ları gibi)
+    // buraya yazılır ve bir daha değişmez. TC Kimlik No alanı YOKTUR — müşteriden bu veri
+    // toplanmıyor (kişisel veri minimizasyonu iş kararı); IyzicoClient.buildInitializeBody
+    // identityNumber'ı ayrı bir snapshot alanı olmadan, mevcut müşteri verilerinden türetir.
+    @Column(name = "customer_city", length = 100)
+    private String customerCity;
+
+    // Şirket yalnızca Türkiye içine gönderim yaptığından iş kararı olarak sabit "Turkey"
+    // yazılır (bkz. OrderService.placeOrder); formda ayrı bir ülke alanı YOKTUR.
+    @Column(name = "customer_country", length = 100)
+    private String customerCountry;
+
     @Column(name = "pre_info_accepted", nullable = false)
     private Boolean preInfoAccepted = false;
 
@@ -262,6 +275,22 @@ public class Order {
 
     public void setCustomerNote(String customerNote) {
         this.customerNote = customerNote;
+    }
+
+    public String getCustomerCity() {
+        return customerCity;
+    }
+
+    public void setCustomerCity(String customerCity) {
+        this.customerCity = customerCity;
+    }
+
+    public String getCustomerCountry() {
+        return customerCountry;
+    }
+
+    public void setCustomerCountry(String customerCountry) {
+        this.customerCountry = customerCountry;
     }
 
     public Boolean getPreInfoAccepted() {

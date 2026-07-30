@@ -40,6 +40,14 @@ class ShippingServiceTest {
         return item;
     }
 
+    // quantity belirtilen overload (yeni testte kullanılır; mevcut testler eski overload'ı
+    // kullanmaya devam eder, quantity=null -> davranış değişmez).
+    private CartItem buildItem(Product product, BigDecimal measurementAmount, Integer quantity) {
+        CartItem item = buildItem(product, measurementAmount);
+        item.setQuantity(quantity);
+        return item;
+    }
+
     private Cart buildCart(CartItem... items) {
         Cart cart = new Cart();
         cart.setItems(List.of(items));
@@ -61,6 +69,26 @@ class ShippingServiceTest {
 
         assertNotNull(result);
         assertEquals(0, new BigDecimal("14.00").compareTo(result.getTotalWeight()));
+        assertTrue(result.isWeightCalculated());
+        assertFalse(result.isRequiresManualReview());
+        assertEquals(ShippingCategory.STANDARD, result.getCategory());
+    }
+
+    /**
+     * YENİ TEST (düzeltme sonrası): 6mm halat, 0.14 kg/m, 100 metre, quantity=2
+     * -> 100 x 0.14 x 2 = 28 kg. CUSTOM/PRESET_AMOUNT'ta aynı ölçü tekrar sepete eklenince
+     * CartService measurementAmount'ı değil quantity'yi artırdığı için bu çarpan ZORUNLUDUR.
+     */
+    @Test
+    void ayniOlcuIkinciKezEkleninceQuantityAgirligaDahilEdilmeli() {
+        Product halat6mm = buildProduct(new BigDecimal("0.14"));
+        CartItem item = buildItem(halat6mm, new BigDecimal("100"), 2);
+        Cart cart = buildCart(item);
+
+        ShippingCalculationResult result = shippingService.calculateCartWeight(cart);
+
+        assertNotNull(result);
+        assertEquals(0, new BigDecimal("28.00").compareTo(result.getTotalWeight()));
         assertTrue(result.isWeightCalculated());
         assertFalse(result.isRequiresManualReview());
         assertEquals(ShippingCategory.STANDARD, result.getCategory());
