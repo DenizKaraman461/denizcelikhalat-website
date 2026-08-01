@@ -15,7 +15,9 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.username}")
+    // application.properties'teki spring.mail.username=${MAIL_USERNAME:} zaten boş varsayılana
+    // sahip; buradaki ":" ek bir güvenlik ağıdır (properties dosyası ileride değişse bile).
+    @Value("${spring.mail.username:}")
     private String fromAddress;
 
     public EmailService(JavaMailSender mailSender) {
@@ -25,6 +27,15 @@ public class EmailService {
     @Async
     public void sendPlainText(String to, String subject, String body) {
         if (to == null || to.isBlank()) {
+            return;
+        }
+
+        // Mail yapılandırılmamış (örn. local geliştirmede MAIL_USERNAME/MAIL_PASSWORD ortam
+        // değişkenleri set edilmemiş) -> uygulamayı DÜŞÜRMEDEN, karışık bir SMTP hata izi yerine
+        // net/anlaşılır bir log ile gönderim atlanır. Production'da bu alan her zaman doludur.
+        if (fromAddress == null || fromAddress.isBlank()) {
+            System.err.println("[EmailService] Mail yapılandırılmamış (MAIL_USERNAME boş) - "
+                    + "gönderim atlandı -> " + to);
             return;
         }
 

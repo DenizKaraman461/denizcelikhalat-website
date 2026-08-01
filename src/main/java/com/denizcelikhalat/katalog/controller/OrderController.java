@@ -5,9 +5,12 @@ import com.denizcelikhalat.katalog.model.CheckoutForm;
 import com.denizcelikhalat.katalog.model.Order;
 import com.denizcelikhalat.katalog.model.PaymentStatus;
 import com.denizcelikhalat.katalog.model.OrderStatus;
+import com.denizcelikhalat.katalog.model.PriceCurrency;
+import com.denizcelikhalat.katalog.model.ShippingCostResult;
 import com.denizcelikhalat.katalog.model.User;
 import com.denizcelikhalat.katalog.service.CartService;
 import com.denizcelikhalat.katalog.service.OrderService;
+import com.denizcelikhalat.katalog.service.PaymentService;
 import com.denizcelikhalat.katalog.service.ShippingCostService;
 import com.denizcelikhalat.katalog.service.ShippingService;
 import com.denizcelikhalat.katalog.repository.UserRepository;
@@ -18,9 +21,11 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 public class OrderController {
@@ -30,17 +35,20 @@ public class OrderController {
     private final UserRepository userRepository;
     private final ShippingService shippingService;
     private final ShippingCostService shippingCostService;
+    private final PaymentService paymentService;
 
     public OrderController(OrderService orderService,
                            CartService cartService,
                            UserRepository userRepository,
                            ShippingService shippingService,
-                           ShippingCostService shippingCostService) {
+                           ShippingCostService shippingCostService,
+                           PaymentService paymentService) {
         this.orderService = orderService;
         this.cartService = cartService;
         this.userRepository = userRepository;
         this.shippingService = shippingService;
         this.shippingCostService = shippingCostService;
+        this.paymentService = paymentService;
     }
 
     // ===================== CHECKOUT AKIŞI =====================
@@ -68,7 +76,9 @@ public class OrderController {
         // sipariş oluşturma/ödeme akışı etkilenmez).
         var shippingCalculation = shippingService.calculateCartWeight(cart);
         model.addAttribute("shippingCalculation", shippingCalculation);
-        model.addAttribute("shippingCostResult", shippingCostService.calculateShippingCost(shippingCalculation));
+        var shippingCostResult = shippingCostService.calculateShippingCost(shippingCalculation);
+        model.addAttribute("shippingCostResult", shippingCostResult);
+        addTryTotalPreview(model, cart, shippingCostResult);
         return "checkout";
     }
 
@@ -107,7 +117,9 @@ public class OrderController {
             model.addAttribute("cart", cart);
             var shippingCalculation = shippingService.calculateCartWeight(cart);
             model.addAttribute("shippingCalculation", shippingCalculation);
-            model.addAttribute("shippingCostResult", shippingCostService.calculateShippingCost(shippingCalculation));
+            var shippingCostResult = shippingCostService.calculateShippingCost(shippingCalculation);
+            model.addAttribute("shippingCostResult", shippingCostResult);
+            addTryTotalPreview(model, cart, shippingCostResult);
             return "checkout";
         }
 
@@ -127,7 +139,9 @@ public class OrderController {
             model.addAttribute("cart", cart);
             var shippingCalculation = shippingService.calculateCartWeight(cart);
             model.addAttribute("shippingCalculation", shippingCalculation);
-            model.addAttribute("shippingCostResult", shippingCostService.calculateShippingCost(shippingCalculation));
+            var shippingCostResult = shippingCostService.calculateShippingCost(shippingCalculation);
+            model.addAttribute("shippingCostResult", shippingCostResult);
+            addTryTotalPreview(model, cart, shippingCostResult);
             return "checkout";
         }
     }
@@ -185,6 +199,42 @@ public class OrderController {
         return authentication != null &&
                 authentication.getAuthorities().stream()
                         .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    /**
+     * Checkout sayfasında "Sipariş Özeti"ni TRY karşılıklarıyla zenginleştirmek için modele
+     * üç alan ekler:
+     * - productTryByCurrency: her para birimi için AYRI TRY karşılığı (Map) — "EUR Toplam ...
+     *   (~602,00 TL)" gibi satır bazlı ipuçları için. Orijinal €/$ gösterimi BOZULMAZ.
+     * - productTotalTry: tüm para birimlerinin TRY karşılıklarının TOPLAMI (yukarıdaki
+     *   haritanın değerlerinin toplamı).
+     * - tryGrandTotal: productTotalTry + kargo ücreti (TRY) = "Ödenecek Toplam". Kur
+     *   alınamıyorsa VEYA kargo ücreti henüz hesaplanamıyorsa (manuel inceleme) null kalır —
+     *   bu durumda checkout.html mevcut (orijinal para birimi bazlı) gösterime GÜVENLİ şekilde
+     *   geri döner, YANLIŞ/EKSİK bir rakam ASLA gösterilmez.
+     *
+     * ÖNEMLİ: paymentService.convertEachCurrencyToTry(...), ödeme başlatılırken (buildCharge)
+     * kullanılan BİREBİR AYNI kur kaynağını ve dönüşüm mantığını kullanır — burada gösterilen
+     * tutarlar ile iyzico'ya gönderilecek gerçek tutar aynı kaynaktan gelir.
+     */
+    private void addTryTotalPreview(Model model, Cart cart, ShippingCostResult shippingCostResult) {
+        Map<PriceCurrency, BigDecimal> productTryByCurrency = paymentService.convertEachCurrencyToTry(
+                cart != null ? cart.getTotalsByCurrency() : null);
+        model.addAttribute("productTryByCurrency", productTryByCurrency);
+
+        BigDecimal productTotalTry = null;
+        if (productTryByCurrency != null) {
+            productTotalTry = BigDecimal.ZERO;
+            for (BigDecimal tryAmount : productTryByCurrency.values()) {
+                productTotalTry = productTotalTry.add(tryAmount);
+            }
+        }
+
+        BigDecimal tryGrandTotal = null;
+        if (productTotalTry != null && shippingCostResult != null && shippingCostResult.isCostCalculated()) {
+            tryGrandTotal = productTotalTry.add(shippingCostResult.getShippingCost());
+        }
+        model.addAttribute("tryGrandTotal", tryGrandTotal);
     }
 
     // ===================== PUANLAMA (AJAX) =====================

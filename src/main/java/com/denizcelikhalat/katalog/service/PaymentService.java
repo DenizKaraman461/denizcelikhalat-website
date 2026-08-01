@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,6 +37,17 @@ import java.util.UUID;
  *   kullanıcı "Ödemeye Devam Et" ile tekrar denerse kur değişse bile AYNI tutar kullanılır.
  * - TRY'ye çevrilmiş tutar belirlenen eşiği (manual-approval-threshold-try) aşarsa, otomatik
  *   ödeme başlatılmaz; manuel onay/iletişim istenir.
+ *
+ * AŞAMA 6 — ÖDEME TUTARINA KARGO DAHİL EDİLMESİ:
+ * Ödeme tutarı artık [ürün toplamı (TRY'ye çevrilmiş)] + [Order.shippingCost SNAPSHOT'ı]
+ * şeklinde hesaplanır: product total -> TRY conversion -> + Order.shippingCost -> manual
+ * approval kontrolü -> iyzico. Order.shippingCost, sipariş oluşturulurken (OrderService.
+ * placeOrder) ShippingService/ShippingCostService tarafından BİR KEZ hesaplanıp Order'a
+ * yazılmış SNAPSHOT değerdir ve zaten TRY cinsindendir; burada ASLA yeniden hesaplanmaz
+ * (ShippingService/ShippingCostService bu sınıftan hiç çağrılmaz), yalnızca okunur.
+ * shippingCost null ise (kargo hesaplanamadı/manuel inceleme) 0 TL kabul edilir; ödeme akışı
+ * bundan etkilenmez/patlamaz. Order.totalAmount (ürün toplamı) BU HESAPTAN ETKİLENMEZ —
+ * yalnızca Order.paymentAmount (iyzico'ya giden gerçek tahsilat tutarı) kargo dahil olur.
  */
 @Service
 public class PaymentService {
@@ -278,6 +290,29 @@ public class PaymentService {
             items.add(single);
         }
 
+        // ---- AŞAMA 6: Kargo ücretini (Order.shippingCost SNAPSHOT'ı) ödeme tutarına dahil et. ----
+        // ÖNEMLİ: ShippingService/ShippingCostService BURADA TEKRAR ÇAĞRILMAZ — yalnızca
+        // sipariş oluşturulurken (OrderService.placeOrder) hesaplanıp Order'a yazılmış olan
+        // SNAPSHOT değer okunur. Bu değer zaten TRY cinsindendir (ShippingCostService'in
+        // application.properties'teki base-cost/per-kg-cost ayarları TRY bazlıdır), bu yüzden
+        // ayrıca bir döviz dönüşümüne TABİ TUTULMAZ. shippingCost null ise (kargo hesaplanamadı/
+        // manuel inceleme gerekiyor) ödeme akışı ASLA patlamaz; kargo 0 TL kabul edilip yalnızca
+        // ürün tutarı üzerinden ödeme başlatılır.
+        BigDecimal shippingCost = order.getShippingCost();
+        if (shippingCost == null) {
+            logger.info("Order {} için shippingCost snapshot'ı null; ödeme tutarına kargo eklenmeden "
+                    + "(0 TL kabul edilerek) devam ediliyor.", order.getId());
+            shippingCost = BigDecimal.ZERO;
+        }
+        if (shippingCost.compareTo(BigDecimal.ZERO) > 0) {
+            IyzicoClient.ChargeItem shippingItem = new IyzicoClient.ChargeItem();
+            shippingItem.name = "Kargo Ücreti";
+            shippingItem.price = shippingCost;
+            items.add(shippingItem);
+
+            officialTotal = officialTotal.add(shippingCost);
+        }
+
         IyzicoClient.ChargeRequest req = new IyzicoClient.ChargeRequest();
         req.totalAmount = officialTotal;
         req.items = items;
@@ -301,6 +336,64 @@ public class PaymentService {
         }
         if (order.getCurrency() != null) return order.getCurrency();
         return PriceCurrency.USD;
+    }
+
+    /**
+     * Checkout sayfasında (henüz Order oluşmadan) "Genel Toplam" ÖNİZLEMESİ göstermek için
+     * kullanılır. buildCharge()'ın ödeme sırasında kullandığı BİREBİR AYNI kur kaynağını
+     * (exchangeRateService.getEffectiveRates()) ve BİREBİR AYNI dönüşüm/yuvarlama mantığını
+     * (convertToTry) çağırır — kod TEKRARLANMAZ, gerçekten PAYLAŞILIR. Bu sayede burada
+     * gösterilen tutar ile ödeme sırasında iyzico'ya GERÇEKTEN gönderilecek tutar tutarlıdır
+     * (kur, iki çağrı arasında -genelde 60 dk'lık cache sayesinde- değişmediği sürece).
+     *
+     * Bu metot bir SİPARİŞ OLUŞTURMAZ, hiçbir yan etkisi YOKTUR — yalnızca gösterim amaçlı bir
+     * ön hesaplamadır. Kur güvenilir şekilde alınamazsa (TCMB erişilemiyor + cache yok/bayat +
+     * fallback kapalı) null döner; çağıran taraf bu durumda TRY tahmini GÖSTERMEMELİDİR
+     * (mevcut orijinal para birimi gösterimine geri dönmelidir).
+     *
+     * @param productTotalsByCurrency ürün toplamları, para birimine göre (Cart veya Order'ın
+     *                                getTotalsByCurrency() metodundan — ikisi de aynı tipte)
+     */
+    public BigDecimal convertProductTotalsToTry(Map<PriceCurrency, BigDecimal> productTotalsByCurrency) {
+        ExchangeRateService.RateResult rates = exchangeRateService.getEffectiveRates();
+        if (!rates.available) {
+            return null;
+        }
+        BigDecimal total = BigDecimal.ZERO;
+        if (productTotalsByCurrency != null) {
+            for (Map.Entry<PriceCurrency, BigDecimal> e : productTotalsByCurrency.entrySet()) {
+                total = total.add(convertToTry(e.getValue(), e.getKey(), rates));
+            }
+        }
+        return total;
+    }
+
+    /**
+     * Checkout sayfasında HER para birimi için AYRI AYRI TRY karşılığını göstermek amacıyla
+     * kullanılır (örn. "EUR Toplam: 14,00 € (~602,00 TL)", "USD Toplam: 50,00 $ (~2.150,00 TL)").
+     * convertProductTotalsToTry(...) ile BİREBİR AYNI kur kaynağını (exchangeRateService.
+     * getEffectiveRates()) ve AYNI dönüşüm mantığını (convertToTry) kullanır — kod tekrarı yok.
+     *
+     * Kur güvenilir şekilde alınamazsa null döner; çağıran taraf bu durumda TRY karşılığı
+     * GÖSTERMEMELİDİR (mevcut orijinal para birimi gösterimine güvenli şekilde geri dönmelidir).
+     *
+     * @return para birimi -> o para biriminin TRY karşılığı. TRY'nin kendisi de haritada
+     *         bulunur (değeri kendisiyle aynıdır); çağıran taraf TRY için ayrıca bir "(~X TL)"
+     *         ipucu göstermek istemiyorsa bunu kendi tarafında (currency == TRY kontrolüyle)
+     *         atlayabilir.
+     */
+    public Map<PriceCurrency, BigDecimal> convertEachCurrencyToTry(Map<PriceCurrency, BigDecimal> totalsByCurrency) {
+        ExchangeRateService.RateResult rates = exchangeRateService.getEffectiveRates();
+        if (!rates.available) {
+            return null;
+        }
+        Map<PriceCurrency, BigDecimal> result = new LinkedHashMap<>();
+        if (totalsByCurrency != null) {
+            for (Map.Entry<PriceCurrency, BigDecimal> e : totalsByCurrency.entrySet()) {
+                result.put(e.getKey(), convertToTry(e.getValue(), e.getKey(), rates));
+            }
+        }
+        return result;
     }
 
     // ExchangeRateService'ten alınan (margin uygulanmış) kurla bir tutarı TRY'ye çevirir.

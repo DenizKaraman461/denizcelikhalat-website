@@ -77,6 +77,9 @@
         .grand{display:flex; justify-content:space-between; align-items:center; margin-top:6px}
         .grand .lbl{font-family:var(--f-display); text-transform:uppercase; letter-spacing:.05em; color:#fff; font-size:1.1rem}
         .grand .amt{font-family:var(--f-mono); font-weight:700; font-size:1.5rem; color:var(--gold); text-shadow:0 0 14px rgba(255,215,0,.35)}
+        .grand-total-box{background:linear-gradient(180deg, rgba(255,215,0,.1), rgba(255,215,0,.03)); border:1px solid rgba(255,215,0,.35); border-radius:14px; padding:16px 18px; margin-top:6px}
+        .grand-total-box .lbl{font-family:var(--f-display); text-transform:uppercase; letter-spacing:.06em; color:#fff; font-size:1.05rem; font-weight:700}
+        .grand-total-box .amt{font-family:var(--f-mono); font-weight:800; font-size:1.75rem; color:var(--gold); text-shadow:0 0 18px rgba(255,215,0,.45)}
         .btn-submit{width:100%; margin-top:22px; padding:.95rem; border:none; border-radius:12px; cursor:pointer; font-family:var(--f-display); font-weight:600; letter-spacing:.08em; text-transform:uppercase; font-size:1.12rem; color:#100d00; background:linear-gradient(180deg,#FFE970,#FFD700 55%,#E9C200); box-shadow:0 10px 28px rgba(255,215,0,.3); transition:transform .2s, box-shadow .2s, filter .2s; display:flex; align-items:center; justify-content:center; gap:10px}
         .btn-submit:hover{transform:translateY(-2px); box-shadow:0 16px 40px rgba(255,215,0,.5); filter:brightness(1.05)}
         .checkout-pay-badges{display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:14px; padding-top:14px; border-top:1px dashed var(--line)}
@@ -197,47 +200,55 @@
 
                 <div class="sum-divider"></div>
 
-                <!-- AŞAMA 4B: Ürün Toplamı / Tahmini Kargo / Genel Toplam AYRI satırlar olarak
-                     gösterilir. ÖNEMLİ: Genel Toplam bu aşamada kargo ile TOPLANMAZ — hâlâ
-                     ürün toplamıyla AYNIDIR (kargo, sipariş/ödeme tutarına henüz eklenmedi;
-                     bu birleştirme AŞAMA 6'da yapılacaktır). Para birimine göre gruplu
-                     toplamlar (dönüşüm YOK) her iki satırda da aynı şekilde gösterilir. -->
-                <div class="grand" style="display:block;">
-                    <span class="lbl" style="display:block; margin-bottom:10px;">Ürün Toplamı</span>
-                    <div th:each="ct : ${cart.totalsByCurrency}"
-                         style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:6px;">
-                        <span class="lbl" style="font-size:.95rem;" th:text="|${ct.key.label} Toplam|">EUR Toplam</span>
-                        <span class="amt" th:text="|${#numbers.formatDecimal(ct.value,1,'POINT',2,'COMMA')} ${ct.key.symbol}|">0,00 €</span>
-                    </div>
-
-                    <!-- AŞAMA 3A: sadece görüntüleme — kargo ÜCRETİ değil, tahmini AĞIRLIK -->
-                    <div th:if="${shippingCalculation != null and shippingCalculation.weightCalculated}"
-                         style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:6px;">
+                <!-- 2) Tahmini Kargo Ağırlığı -->
+                <div class="grand" style="display:block;" th:if="${shippingCalculation != null and shippingCalculation.weightCalculated}">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
                         <span class="lbl" style="font-size:.95rem;">Tahmini Kargo Ağırlığı</span>
-                        <span class="amt" th:text="${#numbers.formatDecimal(shippingCalculation.totalWeight,1,'POINT',2,'COMMA')} + ' kg'">0,00 kg</span>
+                        <span class="amt" style="font-size:1.1rem;"
+                              th:text="${#numbers.formatDecimal(shippingCalculation.totalWeight,1,'POINT',2,'COMMA')} + ' kg'">0,00 kg</span>
                     </div>
-
-                    <!-- AŞAMA 3B: sadece lojistik sınıflandırma bilgisi — kargo ÜCRETİ değil -->
-                    <div th:if="${shippingCalculation != null and shippingCalculation.category != null}"
-                         style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:6px;">
-                        <span class="lbl" style="font-size:.95rem;">Kargo Tipi</span>
-                        <span th:switch="${shippingCalculation.category.name()}">
-                            <span class="amt" th:case="'STANDARD'" style="color:#8ff0b6; font-size:1rem;" th:text="${shippingCalculation.categoryMessage}">Standart Kargo</span>
-                            <span class="amt" th:case="'HEAVY_CARGO'" style="color:#ffcf7a; font-size:1rem;" th:text="${shippingCalculation.categoryMessage}">Ağır Kargo</span>
-                            <span class="amt" th:case="*" style="color:var(--gold-2); font-size:1rem;" th:text="${shippingCalculation.categoryMessage}">Manuel İnceleme Gerekli</span>
+                    <!-- Kargo tipi (STANDARD/HEAVY_CARGO/MANUAL_REVIEW) — küçük, ikincil bilgi -->
+                    <div th:if="${shippingCalculation.category != null}" style="display:flex; justify-content:flex-end; margin-top:2px;">
+                        <span th:switch="${shippingCalculation.category.name()}" style="font-size:.78rem;">
+                            <span th:case="'STANDARD'" style="color:#8ff0b6;" th:text="${shippingCalculation.categoryMessage}">Standart Kargo</span>
+                            <span th:case="'HEAVY_CARGO'" style="color:#ffcf7a;" th:text="${shippingCalculation.categoryMessage}">Ağır Kargo</span>
+                            <span th:case="*" style="color:var(--gold-2);" th:text="${shippingCalculation.categoryMessage}">Manuel İnceleme Gerekli</span>
                         </span>
+                    </div>
+                </div>
+                <p th:if="${shippingCalculation != null and shippingCalculation.requiresManualReview}"
+                   style="margin:6px 0 0; font-size:.82rem; color:var(--gold-2);">
+                    <i class="bi bi-info-circle-fill"></i> Kargo ağırlığı manuel kontrol edilecek.
+                </p>
+
+                <div class="sum-divider"></div>
+
+                <!-- 3) Ürün toplamları — her para birimi AYRI satır + o para biriminin TRY
+                     karşılığı (yalnızca TRY'nin kendisi değilse). Sepette olmayan para birimleri
+                     zaten cart.totalsByCurrency'de yer almadığından hiç gösterilmez. Orijinal
+                     €/$/₺ gösterimi BOZULMAZ; TL karşılığı sadece ek bir bilgi ipucudur. -->
+                <div class="grand" style="display:block;">
+                    <div th:each="ct : ${cart.totalsByCurrency}" style="margin-top:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
+                            <span class="lbl" style="font-size:.95rem;" th:text="|${ct.key.label} Toplam|">EUR Toplam</span>
+                            <span class="amt" style="font-size:1.15rem;" th:text="|${#numbers.formatDecimal(ct.value,1,'POINT',2,'COMMA')} ${ct.key.symbol}|">0,00 €</span>
+                        </div>
+                        <div th:if="${ct.key.name() != 'TRY' and productTryByCurrency != null and productTryByCurrency[ct.key] != null}"
+                             style="display:flex; justify-content:flex-end; margin-top:2px;">
+                            <span style="font-size:.82rem; color:var(--muted);"
+                                  th:text="|(~ ${#numbers.formatDecimal(productTryByCurrency[ct.key],1,'POINT',2,'COMMA')} TL)|">(~0,00 TL)</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="sum-divider"></div>
 
-                <!-- AŞAMA 4B: Tahmini Kargo (ayrı satır — henüz Genel Toplam'a eklenmez) -->
+                <!-- 4) Kargo Ücreti -->
                 <div class="grand" style="display:block;">
-                    <span class="lbl" style="display:block; margin-bottom:10px;">Tahmini Kargo</span>
                     <div th:if="${shippingCostResult != null and shippingCostResult.costCalculated}"
                          style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
                         <span class="lbl" style="font-size:.95rem;">Kargo Ücreti</span>
-                        <span class="amt" th:text="${#numbers.formatDecimal(shippingCostResult.shippingCost,1,'POINT',2,'COMMA')} + ' TL'">0,00 TL</span>
+                        <span class="amt" style="font-size:1.15rem;" th:text="${#numbers.formatDecimal(shippingCostResult.shippingCost,1,'POINT',2,'COMMA')} + ' TL'">0,00 TL</span>
                     </div>
                     <div th:if="${shippingCostResult == null or !shippingCostResult.costCalculated}"
                          style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
@@ -250,20 +261,30 @@
 
                 <div class="sum-divider"></div>
 
-                <!-- AŞAMA 4B: Genel Toplam — ÖNEMLİ: bu aşamada kargo ile TOPLANMAZ, ürün
-                     toplamıyla birebir AYNIDIR (bkz. yukarıdaki not). -->
-                <div class="grand" style="display:block;">
-                    <span class="lbl" style="display:block; margin-bottom:10px;">Genel Toplam</span>
+                <!-- 5) ÖDENECEK TOPLAM — kur + kargo ücreti hesaplanabiliyorsa GERÇEK ödeme
+                     tutarı (TRY, tek büyük rakam) gösterilir; bu tutar ödeme sırasında iyzico'ya
+                     gönderilecek tutarla AYNI kaynaktan gelir (bkz.
+                     PaymentService.convertEachCurrencyToTry / buildCharge). Kur alınamıyorsa
+                     VEYA kargo ücreti henüz hesaplanamıyorsa (manuel inceleme), YANLIŞ/EKSİK bir
+                     rakam göstermek yerine mevcut orijinal para birimi bazlı listeye güvenli
+                     şekilde geri dönülür. -->
+                <div th:if="${tryGrandTotal != null}" class="grand-total-box">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
+                        <span class="lbl">Ödenecek Toplam</span>
+                        <span class="amt" th:text="|${#numbers.formatDecimal(tryGrandTotal,1,'POINT',2,'COMMA')} TL|">0,00 TL</span>
+                    </div>
+                </div>
+                <div th:if="${tryGrandTotal == null}" class="grand" style="display:block;">
+                    <span class="lbl" style="display:block; margin-bottom:10px;">Ödenecek Toplam</span>
                     <div th:each="ct : ${cart.totalsByCurrency}"
                          style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:6px;">
                         <span class="lbl" style="font-size:.95rem;" th:text="|${ct.key.label} Toplam|">EUR Toplam</span>
                         <span class="amt" th:text="|${#numbers.formatDecimal(ct.value,1,'POINT',2,'COMMA')} ${ct.key.symbol}|">0,00 €</span>
                     </div>
+                    <p style="margin:8px 0 0; font-size:.78rem; color:var(--muted);">
+                        Kesin ödeme tutarı (kargo dahil, TL) bir sonraki adımda gösterilecektir.
+                    </p>
                 </div>
-                <p th:if="${shippingCalculation != null and shippingCalculation.requiresManualReview}"
-                   style="margin:10px 0 0; font-size:.82rem; color:var(--gold-2);">
-                    <i class="bi bi-info-circle-fill"></i> Kargo ağırlığı manuel kontrol edilecek.
-                </p>
 
                 <button type="submit" class="btn-submit">
                     <i class="bi bi-credit-card-fill"></i> Kartla Öde
